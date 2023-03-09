@@ -1,5 +1,4 @@
-# Deep Perceptual Timbre Metric (stmetric)
-* Contrastive learning deep perceptual timbre metric
+# Graph-Based Auditory Similarity for Musical Playing Techniques
 
 ## Installation
 `git clone`
