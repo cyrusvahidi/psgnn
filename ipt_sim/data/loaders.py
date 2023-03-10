@@ -46,7 +46,8 @@ class IptSimDataset(Dataset):
 
         self.seed_files = list(df["fname"])
         seed_filelist = []
-        for i, f in tqdm.tqdm(enumerate(self.seed_files), desc="Loading seed files ..."):
+        print("Loading seed files ...")
+        for i, f in tqdm.tqdm(enumerate(self.seed_files)):
             if i in self.seed_idxs:
                 fpath = replace_ext(get_sol_filepath(self.sol_dir, f))
                 seed_id = i
@@ -68,6 +69,7 @@ class IptSimDataset(Dataset):
         df_ext = pd.read_csv(self.ext_csv, index_col=0)
         self.ext_files = df_ext.to_dict(orient="records")
 
+        print("Loading extended files ...")
         ext_filelist = [
             {
                 "fpath": replace_ext(f["filepath"]),
@@ -78,7 +80,7 @@ class IptSimDataset(Dataset):
                 "label": self.seed_labels[f["seed_id"]],
                 "features": self.load_features([replace_ext(f["filepath"])])[0]
             }
-            for f in tqdm(self.ext_files,  desc="Loading extended files ...")
+            for f in tqdm.tqdm(self.ext_files)
         ]
 
         self.filelist = self.seed_filelist + ext_filelist
