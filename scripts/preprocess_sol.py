@@ -1,6 +1,6 @@
 import os
 
-import fire, numpy as np, torch, pandas as pd, openl3, librosa.feature
+import fire, numpy as np, torch, pandas as pd, librosa.feature
 from kymatio.torch import TimeFrequencyScattering, Scattering1D
 from tqdm import tqdm
 
@@ -73,7 +73,6 @@ class JTFSExtractorSOL(SOLExtractor):
             "J": 8,
             "J_fr": 6,
             "Q_fr": 1,
-            "average_fr": True,
             "T": 2**16,
         },
         F_octaves=2,
@@ -83,7 +82,7 @@ class JTFSExtractorSOL(SOLExtractor):
     ):
         super().__init__(
             sol_dir,
-            os.path.join(sol_dir, "jtfs_F2"),
+            os.path.join(sol_dir, "jtfs"),
             jtfs_kwargs["shape"],
             input_sr,
             target_sr,
@@ -93,10 +92,6 @@ class JTFSExtractorSOL(SOLExtractor):
         self.jtfs = TimeFrequencyScattering(
             **jtfs_kwargs, F=jtfs_kwargs["Q"][0] * F_octaves, format="time"
         ).cuda()
-        meta = self.jtfs.meta()
-        order1 = np.where(meta["order"] == 1)
-        order2 = np.where(meta["order"] == 2)
-        self.idxs = np.concatenate([order1[0], order2[0]])
 
         self.samples = []
         self.fnames = []
@@ -121,8 +116,7 @@ class JTFSExtractorSOL(SOLExtractor):
             fulldir = os.path.join(self.output_dir, dirname)
             make_directory(fulldir)
             audio = self.get_audio(os.path.join(self.sol_dir, filepath))
-            coefs = self.jtfs(audio.cuda())[0][self.idxs].mean(dim=-1)
-            # coefs = self.jtfs(audio.cuda())[0][self.idxs].mean(dim=-1)
+            coefs = self.jtfs(audio.cuda())[1:, 0]
             self.samples.append(coefs)
             self.fnames.append(os.path.join(fulldir, fname))
 
@@ -136,26 +130,29 @@ class Scat1DExtractorSOL(SOLExtractor):
             "Q": (12, 1),
             "J": 8,
             "T": 44100,
-            "max_order": 2,
         },
         input_sr=44100,
         target_sr=44100,
         c=1e-3,
+        max_order=2
     ):
         super().__init__(
             sol_dir,
-            os.path.join(sol_dir, "scat1d_o2"),
+            os.path.join(sol_dir, f"scat1d_{max_order}"),
             scat1d_kwargs["shape"],
             input_sr,
             target_sr,
         )
 
         scat1d_kwargs["T"] = 2 ** int(np.log2(scat1d_kwargs["shape"]))
-        self.scat1d = Scattering1D(**scat1d_kwargs).cuda()
+        self.scat1d = Scattering1D(**scat1d_kwargs, max_order=max_order).cuda()
         meta = self.scat1d.meta()
-        order1 = np.where(meta["order"] == 1)
-        order2 = np.where(meta["order"] == 2)
-        self.idxs = np.concatenate([order1[0], order2[0]])
+        if max_order == 2:
+            order1 = np.where(meta["order"] == 1)
+            order2 = np.where(meta["order"] == 2)
+            self.idxs = np.concatenate([order1[0], order2[0]])
+        else:
+            self.idxs = np.where(meta["order"] == 1)
         # self.idxs = order1[0]
 
         self.samples = []
@@ -181,7 +178,7 @@ class Scat1DExtractorSOL(SOLExtractor):
             fulldir = os.path.join(self.output_dir, dirname)
             make_directory(fulldir)
             audio = self.get_audio(os.path.join(self.sol_dir, filepath))
-            coefs = self.scat1d(audio.cuda())[self.idxs].mean(dim=-1)
+            coefs = self.scat1d(audio.cuda())[self.idxs, 0]
             self.samples.append(coefs)
             self.fnames.append(os.path.join(fulldir, fname))
 
@@ -262,10 +259,9 @@ def extract_jtfs_stats(
         "Q": (12, 1),
         "J": 8,
         "J_fr": 6,
-        "average_fr": True,
     },
-    F_octaves=2,
-    feature="jtfs"
+    F_octaves=1,
+    feature="mfcc"
 ):
     """Extract training set statistics from Joint Time-Frequency Scattering
     Coefficients.
@@ -278,8 +274,8 @@ def extract_jtfs_stats(
         extractor = JTFSExtractorSOL(sol_dir, jtfs_kwargs, F_octaves=F_octaves)
     elif feature == "openl3":
         extractor = OpenL3SOLExtractor(sol_dir)
-    elif feature == "scat1d":
-        extractor = Scat1DExtractorSOL(sol_dir)
+    elif "scat1d" in feature:
+        extractor = Scat1DExtractorSOL(sol_dir, max_order=int(feature.split("_")[-1]))
     elif feature == "mfcc":
         extractor = MFCCSOLExtractor(sol_dir)
     extractor.extract()
