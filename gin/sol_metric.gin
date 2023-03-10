@@ -1,8 +1,0 @@
-include '/homes/cv300/Documents/timbre-metric/gin/metric.gin'
-
-MODEL_TYPE = 'sol'
-
-TripletLightningModule.input_dim = 359
-Trainer.results_name = %MODEL_TYPE
-
-DissimilarityDataModule.feature_type = %MODEL_TYPE

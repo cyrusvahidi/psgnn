@@ -1,6 +1,6 @@
 from typing import Union
 
-import numpy as np, gin
+import numpy as np
 import torch, torch.nn.functional as F
 import scipy.io as sio
 from torchmetrics import Metric
@@ -35,7 +35,6 @@ class EvalMetric(Metric):
         return distances
 
 
-@gin.configurable
 class TimbreTripletKNNAgreement(EvalMetric):
     def __init__(self, 
                  test_triplets,
