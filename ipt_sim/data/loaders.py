@@ -24,10 +24,11 @@ class IptSimDataset(Dataset):
                 file path to csv containing metadata for the 78 seed audio samples
             ext_csv: str
                 file path to csv containing metadata for the extended set of sounds
+                if None, only seed files are loaded
             sol_dir: str
                 path to directory containing SOL_0.9_HQ dataset
             feature: str
-                identifier for feature to load
+                identifier for feature to load: ['jtfs', 'mfcc', 'scat1d_o1', 'scat1d_o2']
         """
         self.seed_csv = seed_csv
         self.ext_csv = ext_csv
@@ -39,7 +40,10 @@ class IptSimDataset(Dataset):
         )
         self.feature_path = os.path.join(sol_dir, feature)
         self.load_seed_files()
-        self.load_extended_files()
+        if ext_csv:
+            self.load_extended_files()
+        else:
+            self.filelist = self.seed_filelist
 
     def load_seed_files(self):
         df = pd.read_csv(self.seed_csv, index_col=0)
