@@ -43,7 +43,7 @@ def online_batch_all(embeddings, labels, margin=0.5, squared=False, normalize=Fa
 
     # Remove non-semi-hard triplets (easy)
     # i.e when a_p + margin < a_n
-    triplet_loss = torch.max(triplet_loss, torch.Tensor([0.0]).to(device))
+    triplet_loss = torch.max(triplet_loss, torch.Tensor([0.0]).type_as(triplet_loss))
 
     # Get the number of triplets greater than 0
     valid_triplets = (triplet_loss > 1e-16).float()
@@ -97,14 +97,14 @@ def _triplet_mask_all(labels, device):
     # get anchors
     positive_labels = labels.unsqueeze(1) == labels
     # get the anchor idxs i = j
-    idxs_not_anchor = (torch.eye(labels.shape[0]) == 0).to(device)
+    idxs_not_anchor = (torch.eye(labels.shape[0]).type_as(labels) == 0)
     # combine anchors with positives [a, p, 1]
     anchor_positive = (positive_labels & idxs_not_anchor).unsqueeze(2)
     # get the negative labels [a, 1, n]
     anchor_negative = ~positive_labels.unsqueeze(1)
 
     # Tensor of the valid triplets [i, j, k] True, if 
-    triplet_mask = (anchor_positive & anchor_negative).to(device)
+    triplet_mask = (anchor_positive & anchor_negative)
 
     # mask = idxs & valid_triplets
     
