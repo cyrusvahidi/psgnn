@@ -5,7 +5,7 @@
 """
 
 import torch
-import torch.functional as F
+import torch.nn.functional as F
 
 def online_batch_all(embeddings, labels, margin=0.5, squared=False, normalize=False, device='cpu'):
     ''' Returns the triplet loss over a batch of embeddings, given class labels.

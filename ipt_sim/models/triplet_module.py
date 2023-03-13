@@ -1,11 +1,15 @@
 from typing import Any, List
 
+from functools import partial
+
 import torch
 import torch.nn as nn
 from pytorch_lightning import LightningModule
 
-from ipt_sim.modules.eval import PatK
 from torchmetrics import MaxMetric, MeanMetric
+
+from ipt_sim.modules.eval import PatK
+from ipt_sim.modules.triplet_loss import online_batch_all
 
 
 class SolIPTSimLitModule(LightningModule):
@@ -37,7 +41,7 @@ class SolIPTSimLitModule(LightningModule):
         self.net = nn.Linear(569, 569, bias=False)
 
         # loss function
-        self.criterion = torch.nn.CrossEntropyLoss()
+        self.criterion = partial(online_batch_all, margin=0.2, device=self.device)
 
         # metric objects for calculating and averaging accuracy across batches
         self.train_acc = PatK(k=5, pruned=False)
@@ -45,34 +49,32 @@ class SolIPTSimLitModule(LightningModule):
         self.test_acc = PatK(k=5, pruned=False)
 
         # # for averaging loss across batches
-        # self.train_loss = MeanMetric()
-        # self.val_loss = MeanMetric()
-        # self.test_loss = MeanMetric()
+        self.train_loss = MeanMetric()
+        self.val_loss = MeanMetric()
+        self.test_loss = MeanMetric()
 
         # for tracking best so far validation accuracy
 
     def forward(self, x: torch.Tensor):
-        return x
+        return self.net(x)
 
     def model_step(self, batch: Any):
         x, y = batch
         logits = self.forward(x)
-        return torch.tensor(0.0, requires_grad=True), logits, y
-        # loss = self.criterion(logits, y)
-        # preds = torch.argmax(logits, dim=1)
-        # return loss, preds, y
+        loss, _, _ = self.criterion(logits, y)
+        return loss
 
     def training_step(self, batch: Any, batch_idx: int):
-        loss, logits, targets = self.model_step(batch)
+        loss = self.model_step(batch)
 
         # update and log metrics
-        # self.train_loss(loss)
-        # self.log("train/loss", self.train_loss, on_step=False, on_epoch=True, prog_bar=True)
+        self.train_loss(loss)
+        self.log("train/loss", self.train_loss, on_step=False, on_epoch=True, prog_bar=True)
 
         # we can return here dict with any tensors
         # and then read it in some callback or in `training_epoch_end()` below
         # remember to always return loss from `training_step()` or backpropagation will fail!
-        return {"loss": loss, "targets": targets}
+        return {"loss": loss}
 
     def training_epoch_end(self, outputs: List[Any]):
         # `outputs` is a list of dicts returned from `training_step()`
@@ -90,16 +92,16 @@ class SolIPTSimLitModule(LightningModule):
 
 
     def validation_step(self, batch: Any, batch_idx: int):
-        loss, logits, targets = self.model_step(batch)
+        loss = self.model_step(batch)
 
         # update and log metrics
-        # self.train_loss(loss)
-        # self.log("train/loss", self.train_loss, on_step=False, on_epoch=True, prog_bar=True)
+        self.val_loss(loss)
+        self.log("val/loss", self.val_loss, on_step=False, on_epoch=True, prog_bar=True)
 
         # we can return here dict with any tensors
         # and then read it in some callback or in `training_epoch_end()` below
         # remember to always return loss from `training_step()` or backpropagation will fail!
-        return {"loss": loss, "targets": targets}
+        return {"loss": loss}
 
     def validation_epoch_end(self, outputs: List[Any]):
         ds = self.trainer.val_dataloaders[0].dataset
@@ -108,15 +110,13 @@ class SolIPTSimLitModule(LightningModule):
         self.log("val/acc", acc, prog_bar=True)
 
     def test_step(self, batch: Any, batch_idx: int):
-        loss, logits, targets = self.model_step(batch)
+        loss = self.model_step(batch)
 
         # # update and log metrics
-        # self.test_loss(loss)
-        # self.test_acc(preds, targets)
-        # # self.log("test/loss", self.test_loss, on_step=False, on_epoch=True, prog_bar=True)
-        # self.log("test/acc", self.test_acc, on_step=False, on_epoch=True, prog_bar=True)
+        self.test_loss(loss)
+        self.log("test/loss", self.test_loss, on_step=False, on_epoch=True, prog_bar=True)
 
-        return {"loss": loss, "targets": targets}
+        return {"loss": loss}
 
     def test_epoch_end(self, outputs: List[Any]):
         ds = self.trainer.test_dataloaders[0].dataset

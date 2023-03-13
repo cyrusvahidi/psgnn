@@ -118,7 +118,7 @@ class IptSimDataset(Dataset):
 
     def __getitem__(self, idx):
         item = self.filelist[idx]
-        return {"features": item["features"], "y": item["label"]}
+        return item["features"], item["label"]
 
     def __len__(self):
         return len(self.filelist)
