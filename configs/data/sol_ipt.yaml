@@ -1,5 +1,6 @@
 _target_: ipt_sim.data.sol_datamodule.SolIPTSimDataModule
-batch_size: 128
+batch_size: 256
 # train_val_test_split: [55_000, 5_000, 10_000]
 num_workers: 4
+ext_csv: ./jasmp/extended_pitch_F4.csv
 # pin_memory: False

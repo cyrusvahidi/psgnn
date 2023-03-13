@@ -53,9 +53,9 @@ class SolIPTSimDataModule(pl.LightningDataModule):
         self.ext_csv = ext_csv
 
     def setup(self, stage=None):
-        self.train_ds = IptSimDataset()
-        self.test_ds = IptSimDataset()
-        self.val_ds = IptSimDataset()
+        self.train_ds = IptSimDataset(ext_csv=self.ext_csv)
+        self.test_ds = IptSimDataset(ext_csv=self.ext_csv)
+        self.val_ds = IptSimDataset(ext_csv=self.ext_csv)
 
     def train_dataloader(self):
         return DataLoader(

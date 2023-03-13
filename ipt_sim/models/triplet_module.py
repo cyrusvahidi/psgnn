@@ -41,7 +41,7 @@ class SolIPTSimLitModule(LightningModule):
         self.net = nn.Linear(569, 569, bias=False)
 
         # loss function
-        self.criterion = partial(online_batch_all, margin=0.2, device=self.device)
+        self.criterion = partial(online_batch_all, margin=0.5, normalize=True)
 
         # metric objects for calculating and averaging accuracy across batches
         self.train_acc = PatK(k=5, pruned=False)
@@ -49,9 +49,6 @@ class SolIPTSimLitModule(LightningModule):
         self.test_acc = PatK(k=5, pruned=False)
 
         # # for averaging loss across batches
-        self.train_loss = MeanMetric()
-        self.val_loss = MeanMetric()
-        self.test_loss = MeanMetric()
 
         # for tracking best so far validation accuracy
 
@@ -67,9 +64,7 @@ class SolIPTSimLitModule(LightningModule):
     def training_step(self, batch: Any, batch_idx: int):
         loss = self.model_step(batch)
 
-        # update and log metrics
-        self.train_loss(loss)
-        self.log("train/loss", self.train_loss, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("train/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
 
         # we can return here dict with any tensors
         # and then read it in some callback or in `training_epoch_end()` below
@@ -85,18 +80,16 @@ class SolIPTSimLitModule(LightningModule):
 
         # consider detaching tensors before returning them from `training_step()`
         # or using `on_train_epoch_end()` instead which doesn't accumulate outputs
-        ds = self.trainer.train_dataloaders[0].dataset
+        ds = self.trainer.train_dataloader.loaders.dataset
         acc = self.train_acc(ds.features, ds.filelist)
 
         self.log("train/acc", acc, prog_bar=True)
-
 
     def validation_step(self, batch: Any, batch_idx: int):
         loss = self.model_step(batch)
 
         # update and log metrics
-        self.val_loss(loss)
-        self.log("val/loss", self.val_loss, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("val/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
 
         # we can return here dict with any tensors
         # and then read it in some callback or in `training_epoch_end()` below
@@ -113,14 +106,20 @@ class SolIPTSimLitModule(LightningModule):
         loss = self.model_step(batch)
 
         # # update and log metrics
-        self.test_loss(loss)
-        self.log("test/loss", self.test_loss, on_step=False, on_epoch=True, prog_bar=True)
+        self.log("test/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
 
         return {"loss": loss}
 
     def test_epoch_end(self, outputs: List[Any]):
         ds = self.trainer.test_dataloaders[0].dataset
-        acc = self.test_acc(ds.features, ds.filelist)
+        batch_sz = 64
+        features = torch.cat(
+            [
+                self.net(ds.features[i : i + batch_sz].to(self.device))
+                for i in range(0, len(ds.features), batch_sz)
+            ]
+        )
+        acc = self.test_acc(features, ds.filelist)
 
         self.log("test/acc", acc, prog_bar=True)
 

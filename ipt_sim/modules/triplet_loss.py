@@ -7,7 +7,7 @@
 import torch
 import torch.nn.functional as F
 
-def online_batch_all(embeddings, labels, margin=0.5, squared=False, normalize=False, device='cpu'):
+def online_batch_all(embeddings, labels, margin=0.5, normalize=False, device='cuda:0'):
     ''' Returns the triplet loss over a batch of embeddings, given class labels.
         Only 'semi-hard' triplets are counted i.e a_p - a_n + margin > 0
     Args:
@@ -24,8 +24,7 @@ def online_batch_all(embeddings, labels, margin=0.5, squared=False, normalize=Fa
     # pairwise embedding distances
     if normalize:
         embeddings = F.normalize(embeddings)
-    p_dist = _pairwise_distances(embeddings, squared=squared)
-    
+    p_dist = torch.cdist(embeddings, embeddings, p=2.0)
     # anchor to positive (batch_size, batch_size, 1)
     a_p = p_dist.unsqueeze(2)
     # anchor to positive (batch_size, 1, batch_size)
@@ -43,7 +42,7 @@ def online_batch_all(embeddings, labels, margin=0.5, squared=False, normalize=Fa
 
     # Remove non-semi-hard triplets (easy)
     # i.e when a_p + margin < a_n
-    triplet_loss = torch.max(triplet_loss, torch.Tensor([0.0]).type_as(triplet_loss))
+    triplet_loss = torch.max(triplet_loss, torch.Tensor([0.0]).to(device))
 
     # Get the number of triplets greater than 0
     valid_triplets = (triplet_loss > 1e-16).float()
@@ -104,7 +103,7 @@ def _triplet_mask_all(labels, device):
     anchor_negative = ~positive_labels.unsqueeze(1)
 
     # Tensor of the valid triplets [i, j, k] True, if 
-    triplet_mask = (anchor_positive & anchor_negative)
+    triplet_mask = (anchor_positive & anchor_negative).to(device)
 
     # mask = idxs & valid_triplets
     
