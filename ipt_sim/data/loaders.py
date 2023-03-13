@@ -82,7 +82,7 @@ class IptSimDataset(Dataset):
                 "dynamics": f["dynamics"],
                 "family": f["instrument family"],
                 "label": self.seed_labels[f["seed_id"]],
-                "features": self.load_features([replace_ext(f["filepath"])])[0]
+                "features": self.load_features([replace_ext(f["filepath"])])[0],
             }
             for f in tqdm.tqdm(self.ext_files)
         ]
@@ -110,6 +110,11 @@ class IptSimDataset(Dataset):
             self.mean = np.load(os.path.join(stats_dir, "mean.npy"))
         except FileNotFoundError:
             print("mean file not found")
+
+    @property
+    def features(self):
+        features = torch.stack([f["features"] for f in self.filelist])
+        return features
 
     def __getitem__(self, idx):
         item = self.filelist[idx]
