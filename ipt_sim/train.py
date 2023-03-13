@@ -46,7 +46,7 @@ def train(cfg: DictConfig) -> Tuple[dict, dict]:
         ckpt_path = trainer.checkpoint_callback.best_model_path
         if ckpt_path == "":
             ckpt_path = None
-        trainer.test(model=model, datamodule=datamodule, ckpt_path=ckpt_path)
+        trainer.test(model=model, dataloaders=datamodule.test_dataloader(), ckpt_path=ckpt_path)
 
     test_metrics = trainer.callback_metrics
 

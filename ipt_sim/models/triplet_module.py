@@ -39,9 +39,10 @@ class SolIPTSimLitModule(LightningModule):
         self.save_hyperparameters(logger=False)
 
         self.net = nn.Linear(569, 569, bias=False)
+        nn.init.kaiming_uniform_(self.net.weight, mode='fan_in', nonlinearity='relu')
 
         # loss function
-        self.criterion = partial(online_batch_all, margin=0.5, normalize=True)
+        self.criterion = partial(online_batch_all, margin=0.8, normalize=False)
 
         # metric objects for calculating and averaging accuracy across batches
         self.train_acc = PatK(k=5, pruned=False)
@@ -71,19 +72,19 @@ class SolIPTSimLitModule(LightningModule):
         # remember to always return loss from `training_step()` or backpropagation will fail!
         return {"loss": loss}
 
-    def training_epoch_end(self, outputs: List[Any]):
-        # `outputs` is a list of dicts returned from `training_step()`
+    # def training_epoch_end(self, outputs: List[Any]):
+    #     # `outputs` is a list of dicts returned from `training_step()`
 
-        # Warning: when overriding `training_epoch_end()`, lightning accumulates outputs from all batches of the epoch
-        # this may not be an issue when training on mnist
-        # but on larger datasets/models it's easy to run into out-of-memory errors
+    #     # Warning: when overriding `training_epoch_end()`, lightning accumulates outputs from all batches of the epoch
+    #     # this may not be an issue when training on mnist
+    #     # but on larger datasets/models it's easy to run into out-of-memory errors
 
-        # consider detaching tensors before returning them from `training_step()`
-        # or using `on_train_epoch_end()` instead which doesn't accumulate outputs
-        ds = self.trainer.train_dataloader.loaders.dataset
-        acc = self.train_acc(ds.features, ds.filelist)
+    #     # consider detaching tensors before returning them from `training_step()`
+    #     # or using `on_train_epoch_end()` instead which doesn't accumulate outputs
+    #     ds = self.trainer.train_dataloader.loaders.dataset
+    #     acc = self.train_acc(ds.features, ds.filelist)
 
-        self.log("train/acc", acc, prog_bar=True)
+    #     self.log("train/acc", acc, prog_bar=True)
 
     def validation_step(self, batch: Any, batch_idx: int):
         loss = self.model_step(batch)
@@ -96,11 +97,11 @@ class SolIPTSimLitModule(LightningModule):
         # remember to always return loss from `training_step()` or backpropagation will fail!
         return {"loss": loss}
 
-    def validation_epoch_end(self, outputs: List[Any]):
-        ds = self.trainer.val_dataloaders[0].dataset
-        acc = self.val_acc(ds.features, ds.filelist)
+    # def validation_epoch_end(self, outputs: List[Any]):
+    #     ds = self.trainer.val_dataloaders[0].dataset
+    #     acc = self.val_acc(ds.features, ds.filelist)
 
-        self.log("val/acc", acc, prog_bar=True)
+    #     self.log("val/acc", acc, prog_bar=True)
 
     def test_step(self, batch: Any, batch_idx: int):
         loss = self.model_step(batch)

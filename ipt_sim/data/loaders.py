@@ -45,6 +45,8 @@ class IptSimDataset(Dataset):
         else:
             self.filelist = self.seed_filelist
 
+        self.get_std_stats()
+
     def load_seed_files(self):
         df_seed = pd.read_csv(self.seed_csv, index_col=0)
 
@@ -117,12 +119,16 @@ class IptSimDataset(Dataset):
 
     def load_feature_stats(self):
         stats_dir = os.path.join(self.feature_path, "stats")
-        self.mu = np.load(os.path.join(stats_dir, "mu.npy"))
-        self.std = np.sqrt(np.load(os.path.join(stats_dir, "var.npy")))
+        # self.mu = np.load(os.path.join(stats_dir, "mu.npy"))
+        # self.std = np.sqrt(np.load(os.path.join(stats_dir, "var.npy")))
         try:
             self.mean = np.load(os.path.join(stats_dir, "mean.npy"))
         except FileNotFoundError:
             print("mean file not found")
+
+    def get_std_stats(self):
+        self.mu = self.features.mean(dim=0)
+        self.std = self.features.std(dim=0)
 
     @property
     def features(self):
@@ -131,7 +137,9 @@ class IptSimDataset(Dataset):
 
     def __getitem__(self, idx):
         item = self.filelist[idx]
-        return item["features"], item["label"]
+        features = (item["features"] - self.mean) / self.std
+        y = item["label"]
+        return features, y
 
     def __len__(self):
         return len(self.filelist)
