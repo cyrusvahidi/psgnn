@@ -155,7 +155,7 @@ class PatK():
     def __init__(self, 
                  k=5, 
                  pruned=False,
-                 sim_mat="/homes/cv300/Documents/timbre-metric/notebooks/lostanlen2020jasmp/experiments/similarity/ticelJudgments.mat"):
+                 sim_mat="./lostanlen2020jasmp/experiments/similarity/ticelJudgments.mat"):
         self.k = k 
         self.pruned = pruned 
         mat = sio.loadmat(sim_mat)

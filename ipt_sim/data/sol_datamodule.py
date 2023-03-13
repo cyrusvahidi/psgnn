@@ -32,13 +32,13 @@ class BaseDataModule(pl.LightningDataModule):
         return
 
 
-class DissimilarityDataModule(pl.LightningDataModule):
+class SolIPTSimDataModule(pl.LightningDataModule):
     def __init__(
         self,
         batch_size: float = 1,
         num_workers: float = 4,
         seed_csv: str = "./jasmp/seed_filelist.csv",
-        split_idxs=None,
+        split_idxs=(None, None, None),
         overfit: bool = False,
         ext_csv=None,
     ):
@@ -54,8 +54,8 @@ class DissimilarityDataModule(pl.LightningDataModule):
 
     def setup(self, stage=None):
         self.train_ds = IptSimDataset()
-        self.test_ds = IptSimDataset
-        self.val_ds = IptSimDataset
+        self.test_ds = IptSimDataset()
+        self.val_ds = IptSimDataset()
 
     def train_dataloader(self):
         return DataLoader(
