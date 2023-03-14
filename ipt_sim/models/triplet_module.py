@@ -10,6 +10,7 @@ from torchmetrics import MaxMetric, MeanMetric
 
 from ipt_sim.modules.eval import PatK
 from ipt_sim.modules.triplet_loss import online_batch_all
+from online_triplet_loss.losses import batch_hard_triplet_loss, batch_all_triplet_loss
 
 
 class SolIPTSimLitModule(LightningModule):
@@ -38,16 +39,17 @@ class SolIPTSimLitModule(LightningModule):
         # also ensures init params will be stored in ckpt
         self.save_hyperparameters(logger=False)
 
-        self.net = nn.Linear(569, 569, bias=False)
+        self.net = nn.Linear(569, 128, bias=False)
         nn.init.kaiming_uniform_(self.net.weight, mode='fan_in', nonlinearity='relu')
 
         # loss function
-        self.criterion = partial(online_batch_all, margin=0.8, normalize=False)
+        self.criterion = partial(batch_hard_triplet_loss, margin=0.8) 
+        # partial(online_batch_all, margin=0.8, normalize=False)
 
         # metric objects for calculating and averaging accuracy across batches
-        self.train_acc = PatK(k=5, pruned=False)
-        self.val_acc = PatK(k=5, pruned=False)
-        self.test_acc = PatK(k=5, pruned=False)
+        self.train_acc = PatK(k=5, pruned=True)
+        self.val_acc = PatK(k=5, pruned=True)
+        self.test_acc = PatK(k=5, pruned=True)
 
         # # for averaging loss across batches
 
@@ -59,7 +61,7 @@ class SolIPTSimLitModule(LightningModule):
     def model_step(self, batch: Any):
         x, y = batch
         logits = self.forward(x)
-        loss, _, _ = self.criterion(logits, y)
+        loss = self.criterion(y, logits)
         return loss
 
     def training_step(self, batch: Any, batch_idx: int):
@@ -121,8 +123,10 @@ class SolIPTSimLitModule(LightningModule):
             ]
         )
         acc = self.test_acc(features, ds.filelist)
+        acc_euclidean = self.test_acc(ds.features, ds.filelist)
 
         self.log("test/acc", acc, prog_bar=True)
+        self.log("test/acc_euclidean", acc_euclidean, prog_bar=True)
 
     def configure_optimizers(self):
         """Choose what optimizers and learning-rate schedulers to use in your optimization.
