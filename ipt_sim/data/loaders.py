@@ -140,7 +140,7 @@ class IptSimDataset(Dataset):
 
     @property
     def labels(self):
-        labels = torch.stack([f["label"] for f in self.filelist])
+        labels = torch.stack([torch.tensor(f["label"]) for f in self.filelist])
         return labels
 
     def __getitem__(self, idx):
