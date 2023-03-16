@@ -9,9 +9,9 @@ SEED_CSV = "/homes/cv300/Documents/timbre-metric/jasmp/seed_filelist.csv"
 EXT_CSV = '/homes/cv300/Documents/timbre-metric/jasmp/extended_pitch_F4.csv'
 mat = sio.loadmat(sim)
 
-mat = mat['ensemble'] # 'ensemble'
+mat = mat['ci'] # 'ensemble'
 
-def precision_at_k(pdists, idx, labels, k=5, pruned=False):
+def precision_at_k(pdists, idx, labels, k=5, pruned=True):
     # get top k queries
     sorted_idxs = pdists[idx].argsort()
     sorted_idxs = sorted_idxs[sorted_idxs != idx][:200]

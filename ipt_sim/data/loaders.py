@@ -53,7 +53,7 @@ class IptSimDataset(Dataset):
         self.seed_files = df_seed.to_dict(orient="records")
         # seed_filelist = []
         print("Loading seed files ...")
-        
+
         self.seed_filelist = [
             {
                 "fpath": replace_ext(f["fpath"]),
@@ -124,20 +124,28 @@ class IptSimDataset(Dataset):
         try:
             self.mean = np.load(os.path.join(stats_dir, "mean.npy"))
         except FileNotFoundError:
-            print("mean file not found")
+            "mean file not found"
 
     def get_std_stats(self):
-        self.mu = self.features.mean(dim=0)
-        self.std = self.features.std(dim=0)
+        features = torch.stack([f["features"] for f in self.filelist])
+        self.mu = features.mean(dim=0)
+        self.std = features.std(dim=0)
 
     @property
     def features(self):
-        features = torch.stack([f["features"] for f in self.filelist])
+        features = torch.stack(
+            [(f["features"] - self.mu) / self.std for f in self.filelist]
+        )
         return features
+
+    @property
+    def labels(self):
+        labels = torch.stack([f["label"] for f in self.filelist])
+        return labels
 
     def __getitem__(self, idx):
         item = self.filelist[idx]
-        features = (item["features"] - self.mean) / self.std
+        features = (item["features"] - self.mu) / self.std
         y = item["label"]
         return features, y
 

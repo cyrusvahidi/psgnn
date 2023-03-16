@@ -39,11 +39,11 @@ class SolIPTSimLitModule(LightningModule):
         # also ensures init params will be stored in ckpt
         self.save_hyperparameters(logger=False)
 
-        self.net = nn.Linear(569, 128, bias=False)
+        self.net = nn.Linear(569, 64, bias=True)
         nn.init.kaiming_uniform_(self.net.weight, mode='fan_in', nonlinearity='relu')
 
         # loss function
-        self.criterion = partial(batch_hard_triplet_loss, margin=0.8) 
+        self.criterion = partial(batch_all_triplet_loss, margin=0.8) 
         # partial(online_batch_all, margin=0.8, normalize=False)
 
         # metric objects for calculating and averaging accuracy across batches
@@ -61,14 +61,14 @@ class SolIPTSimLitModule(LightningModule):
     def model_step(self, batch: Any):
         x, y = batch
         logits = self.forward(x)
-        loss = self.criterion(y, logits)
-        return loss
+        loss, valid_triplets = self.criterion(y, logits)
+        return loss, valid_triplets
 
     def training_step(self, batch: Any, batch_idx: int):
-        loss = self.model_step(batch)
+        loss, valid_triplets = self.model_step(batch)
 
         self.log("train/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
-
+        self.log("train/valid", valid_triplets, on_step=False, on_epoch=True, prog_bar=True)
         # we can return here dict with any tensors
         # and then read it in some callback or in `training_epoch_end()` below
         # remember to always return loss from `training_step()` or backpropagation will fail!
@@ -89,7 +89,7 @@ class SolIPTSimLitModule(LightningModule):
     #     self.log("train/acc", acc, prog_bar=True)
 
     def validation_step(self, batch: Any, batch_idx: int):
-        loss = self.model_step(batch)
+        loss, _ = self.model_step(batch)
 
         # update and log metrics
         self.log("val/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
@@ -106,7 +106,7 @@ class SolIPTSimLitModule(LightningModule):
     #     self.log("val/acc", acc, prog_bar=True)
 
     def test_step(self, batch: Any, batch_idx: int):
-        loss = self.model_step(batch)
+        loss, _ = self.model_step(batch)
 
         # # update and log metrics
         self.log("test/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
