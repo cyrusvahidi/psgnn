@@ -2,25 +2,26 @@
 _target_: ipt_sim.models.triplet_module.SolIPTSimLitModule
 
 optimizer:
-  _target_: torch.optim.Adam
+  _target_: torch.optim.AdamW
   _partial_: true
-  lr: 0.0001 # 0.0001
-  weight_decay: 0.0
+  lr: 0.005 # 0.001
+  weight_decay: 0.0 # 1e-4
 
 scheduler:
-  _target_: torch.optim.lr_scheduler.ReduceLROnPlateau
+  _target_: torch.optim.lr_scheduler.StepLR
   _partial_: true
-  mode: min
-  factor: 0.5
-  patience: 5
+  step_size: 10
+  gamma: 0.95
 
 criterion:
   _target_: pytorch_metric_learning.losses.ProxyAnchorLoss
-  margin: 0.8
+  margin: 0.1
   num_classes: 19
-  embedding_size: 64
+  embedding_size: 569
 
 net:
   _target_: ipt_sim.models.components.linear.LinearProjection
   input_size: 569
-  output_size: 64
+  output_size: 569
+
+prune_accuracy: False

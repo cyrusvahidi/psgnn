@@ -21,4 +21,6 @@ criterion:
 net:
   _target_: ipt_sim.models.components.linear.LinearProjection
   input_size: 569
-  output_size: 64
+  output_size: 569
+
+prune_accuracy: False

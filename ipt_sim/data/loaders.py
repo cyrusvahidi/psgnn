@@ -61,28 +61,11 @@ class IptSimDataset(Dataset):
                 "pitch": f["pitch"],
                 "dynamics": f["dynamics"],
                 "family": f["instrument family"],
-                "label": self.seed_labels[i],
+                "label": self.seed_labels[i].astype(np.int64),
                 "features": self.load_features([replace_ext(f["fpath"])])[0],
             }
             for i, f in tqdm.tqdm(enumerate(self.seed_files))
         ]
-        # for i, f in tqdm.tqdm(enumerate(self.seed_files)):
-        #     if i in self.seed_idxs:
-        #         fpath = replace_ext(get_sol_filepath(self.sol_dir, f))
-        #         seed_id = i
-        #         label = self.seed_labels[i]
-        #         file_info = {
-        #             "fpath": fpath,
-        #             "seed_id": seed_id,
-        #             "pitch": df.iloc[i]["pitch"],
-        #             "dynamics": df.iloc[i]["dynamics"],
-        #             "family": df.iloc[i]["instrument family"],
-        #             "label": label,
-        #         }
-        #         features = self.load_features([fpath])[0]
-        #         file_info["features"] = features
-        #         seed_filelist.append(file_info)
-        # self.seed_filelist = seed_filelist
 
     def load_extended_files(self):
         df_ext = pd.read_csv(self.ext_csv, index_col=0)
@@ -96,7 +79,7 @@ class IptSimDataset(Dataset):
                 "pitch": f["pitch"],
                 "dynamics": f["dynamics"],
                 "family": f["instrument family"],
-                "label": self.seed_labels[f["seed_id"]],
+                "label": self.seed_labels[f["seed_id"]].astype(np.int64),
                 "features": self.load_features([replace_ext(f["filepath"])])[0],
             }
             for f in tqdm.tqdm(self.ext_files)

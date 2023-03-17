@@ -41,6 +41,7 @@ class SolIPTSimDataModule(pl.LightningDataModule):
         split_idxs=(None, None, None),
         overfit: bool = False,
         ext_csv=None,
+        feature="jtfs"
     ):
         super().__init__()
 
@@ -51,11 +52,12 @@ class SolIPTSimDataModule(pl.LightningDataModule):
         self.overfit = overfit
         self.seed_csv = seed_csv
         self.ext_csv = ext_csv
+        self.feature = feature
 
     def setup(self, stage=None):
-        self.train_ds = IptSimDataset(ext_csv=self.ext_csv)
-        self.test_ds = IptSimDataset(ext_csv=self.ext_csv)
-        self.val_ds = IptSimDataset(ext_csv=self.ext_csv)
+        self.train_ds = IptSimDataset(ext_csv=self.ext_csv, feature=self.feature)
+        self.test_ds = IptSimDataset(ext_csv=self.ext_csv, feature=self.feature)
+        self.val_ds = IptSimDataset(ext_csv=self.ext_csv, feature=self.feature)
 
     def train_dataloader(self):
         return DataLoader(
@@ -65,18 +67,18 @@ class SolIPTSimDataModule(pl.LightningDataModule):
             drop_last=True,
             shuffle=True,
         )
-
-    def test_dataloader(self):
+    
+    def val_dataloader(self):
         return DataLoader(
-            self.test_ds,
+            self.val_ds,
             batch_size=self.batch_size,
             num_workers=self.num_workers,
             shuffle=False,
         )
 
-    def val_dataloader(self):
+    def test_dataloader(self):
         return DataLoader(
-            self.val_ds,
+            self.test_ds,
             batch_size=self.batch_size,
             num_workers=self.num_workers,
             shuffle=False,
