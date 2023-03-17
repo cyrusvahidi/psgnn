@@ -16,7 +16,6 @@ scheduler:
 
 criterion:
   _target_: pytorch_metric_learning.losses.TripletMarginLoss
-  _partial_: true
   margin: 0.8
 
 net:

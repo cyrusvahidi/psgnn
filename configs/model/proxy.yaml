@@ -16,7 +16,6 @@ scheduler:
 
 criterion:
   _target_: pytorch_metric_learning.losses.ProxyAnchorLoss
-  _partial_: true
   margin: 0.8
   num_classes: 19
   embedding_size: 64
