@@ -14,10 +14,12 @@ scheduler:
   factor: 0.5
   patience: 5
 
-# net:
-#   _target_: src.models.components.simple_dense_net.SimpleDenseNet
-#   input_size: 784
-#   lin1_size: 64
-#   lin2_size: 128
-#   lin3_size: 64
-#   output_size: 10
+criterion:
+  _target_: pytorch_metric_learning.losses.TripletMarginLoss
+  _partial_: true
+  margin: 0.8
+
+net:
+  _target_: ipt_sim.models.components.linear.LinearProjection
+  input_size: 569
+  output_size: 64

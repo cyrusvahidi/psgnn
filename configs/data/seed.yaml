@@ -1,0 +1,4 @@
+_target_: ipt_sim.data.sol_datamodule.SolIPTSimDataModule
+batch_size: 512
+num_workers: 4
+ext_csv: False

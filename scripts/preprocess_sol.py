@@ -3,6 +3,7 @@ import os
 import fire, numpy as np, torch, pandas as pd, librosa.feature
 from kymatio.torch import TimeFrequencyScattering, Scattering1D
 from tqdm import tqdm
+import openl3
 
 from ipt_sim.utils import (
     load_audio_file,
@@ -197,14 +198,15 @@ class OpenL3SOLExtractor(SOLExtractor):
             dirname, fname = os.path.dirname(filepath), get_fname(filepath)
             fulldir = os.path.join(self.output_dir, dirname)
             make_directory(fulldir)
-            audio = self.get_audio(os.path.join(self.sol_dir, filepath)).numpy()
-            embeddings, timestamps = openl3.get_audio_embedding(
-                audio, 44100, embedding_size=512
-            )
+            if not os.path.exists(os.path.join(fulldir, fname) + ".npy"):
+                audio = self.get_audio(os.path.join(self.sol_dir, filepath)).numpy()
+                embeddings, timestamps = openl3.get_audio_embedding(
+                    audio, 44100, embedding_size=512, frontend='kapre'
+                )
 
-            embeddings_mean = embeddings.mean(axis=0)
-            self.samples.append(embeddings_mean)
-            np.save(os.path.join(fulldir, fname), embeddings_mean)
+                embeddings_mean = embeddings.mean(axis=0)
+                self.samples.append(embeddings_mean)
+                np.save(os.path.join(fulldir, fname), embeddings_mean)
 
     def save_stats(self):
         # reshape to (n_examples x timesteps, embedding_size)
@@ -261,7 +263,7 @@ def extract_jtfs_stats(
         "J_fr": 6,
     },
     F_octaves=1,
-    feature="mfcc"
+    feature="openl3"
 ):
     """Extract training set statistics from Joint Time-Frequency Scattering
     Coefficients.

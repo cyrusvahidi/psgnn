@@ -9,8 +9,6 @@ from pytorch_lightning import LightningModule
 from torchmetrics import MaxMetric, MeanMetric
 
 from ipt_sim.modules.eval import PatK
-from ipt_sim.modules.triplet_loss import online_batch_all
-from online_triplet_loss.losses import batch_hard_triplet_loss, batch_all_triplet_loss
 
 
 class SolIPTSimLitModule(LightningModule):
@@ -32,24 +30,31 @@ class SolIPTSimLitModule(LightningModule):
         self,
         optimizer: torch.optim.Optimizer,
         scheduler: torch.optim.lr_scheduler,
+        criterion, 
+        net
     ):
         super().__init__()
 
         # this line allows to access init params with 'self.hparams' attribute
         # also ensures init params will be stored in ckpt
         self.save_hyperparameters(logger=False)
-
-        self.net = nn.Linear(569, 64, bias=True)
-        nn.init.kaiming_uniform_(self.net.weight, mode='fan_in', nonlinearity='relu')
-
+        in_dim = 569
+        out_dim = 64
+        # self.net = nn.Sequential(
+        #     nn.Linear(in_dim, out_dim * 4),
+        #     nn.ReLU(),
+        #     nn.Linear(out_dim * 4, out_dim * 2),
+        #     nn.ReLU(),
+        #     nn.Linear(out_dim * 2, out_dim)
+        # )
+        self.net = net
         # loss function
-        self.criterion = partial(batch_all_triplet_loss, margin=0.8) 
-        # partial(online_batch_all, margin=0.8, normalize=False)
+        self.criterion = criterion
 
         # metric objects for calculating and averaging accuracy across batches
         self.train_acc = PatK(k=5, pruned=True)
         self.val_acc = PatK(k=5, pruned=True)
-        self.test_acc = PatK(k=5, pruned=True)
+        self.test_acc = PatK(k=5, pruned=False)
 
         # # for averaging loss across batches
 
@@ -61,14 +66,14 @@ class SolIPTSimLitModule(LightningModule):
     def model_step(self, batch: Any):
         x, y = batch
         logits = self.forward(x)
-        loss, valid_triplets = self.criterion(y, logits)
-        return loss, valid_triplets
+        loss = self.criterion(logits, y.long())
+        return loss
 
     def training_step(self, batch: Any, batch_idx: int):
-        loss, valid_triplets = self.model_step(batch)
+        loss = self.model_step(batch)
 
         self.log("train/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
-        self.log("train/valid", valid_triplets, on_step=False, on_epoch=True, prog_bar=True)
+        # self.log("train/valid", valid_triplets, on_step=False, on_epoch=True, prog_bar=True)
         # we can return here dict with any tensors
         # and then read it in some callback or in `training_epoch_end()` below
         # remember to always return loss from `training_step()` or backpropagation will fail!
@@ -89,7 +94,7 @@ class SolIPTSimLitModule(LightningModule):
     #     self.log("train/acc", acc, prog_bar=True)
 
     def validation_step(self, batch: Any, batch_idx: int):
-        loss, _ = self.model_step(batch)
+        loss = self.model_step(batch)
 
         # update and log metrics
         self.log("val/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
@@ -106,7 +111,7 @@ class SolIPTSimLitModule(LightningModule):
     #     self.log("val/acc", acc, prog_bar=True)
 
     def test_step(self, batch: Any, batch_idx: int):
-        loss, _ = self.model_step(batch)
+        loss = self.model_step(batch)
 
         # # update and log metrics
         self.log("test/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
