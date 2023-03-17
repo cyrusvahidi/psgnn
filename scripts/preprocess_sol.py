@@ -89,7 +89,7 @@ class JTFSExtractorSOL(SOLExtractor):
             target_sr,
         )
 
-        jtfs_kwargs["T"] = 2 ** int(np.log2(jtfs_kwargs["shape"]))
+        # jtfs_kwargs["T"] = 2 ** int(np.log2(jtfs_kwargs["shape"]))
         self.jtfs = TimeFrequencyScattering(
             **jtfs_kwargs, F=jtfs_kwargs["Q"][0] * F_octaves, format="time"
         ).cuda()
@@ -117,7 +117,7 @@ class JTFSExtractorSOL(SOLExtractor):
             fulldir = os.path.join(self.output_dir, dirname)
             make_directory(fulldir)
             audio = self.get_audio(os.path.join(self.sol_dir, filepath))
-            coefs = self.jtfs(audio.cuda())[1:, 0]
+            coefs = self.jtfs(audio.cuda())[1:].mean(dim=-1)
             self.samples.append(coefs)
             self.fnames.append(os.path.join(fulldir, fname))
 
@@ -257,13 +257,13 @@ def extract_jtfs_stats(
     sol_dir="/import/c4dm-datasets/SOL_0.9_HQ/",
     jtfs_kwargs={
         "shape": 2**16,
-        "T": 2**16,
-        "Q": (12, 1),
-        "J": 8,
-        "J_fr": 6,
+        "Q": (8, 2),
+        "Q_fr": 1,
+        "J": 12,
+        "J_fr": 4,
     },
-    F_octaves=1,
-    feature="openl3"
+    F_octaves=2,
+    feature="jtfs"
 ):
     """Extract training set statistics from Joint Time-Frequency Scattering
     Coefficients.
