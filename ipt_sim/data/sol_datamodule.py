@@ -2,7 +2,7 @@ import abc
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 
-from ipt_sim.data import IptSimDataset
+from ipt_sim.data import IptSimDataset, InstrumentSplitGenerator
 
 
 class BaseDataModule(pl.LightningDataModule):
@@ -39,7 +39,6 @@ class SolIPTSimDataModule(pl.LightningDataModule):
         num_workers: float = 4,
         seed_csv: str = "./jasmp/seed_filelist.csv",
         split_idxs=(None, None, None),
-        overfit: bool = False,
         ext_csv=None,
         feature="jtfs"
     ):
@@ -48,16 +47,17 @@ class SolIPTSimDataModule(pl.LightningDataModule):
         self.batch_size = batch_size
         self.num_workers = num_workers
 
-        self.train_idxs, self.val_idxs, self.test_idxs = split_idxs
-        self.overfit = overfit
+        self.split_gen = InstrumentSplitGenerator()
+        self.train_idxs, _, _ = self.split_gen.split()
+        self.val_idxs, self.test_idxs = None
         self.seed_csv = seed_csv
         self.ext_csv = ext_csv
         self.feature = feature
 
     def setup(self, stage=None):
-        self.train_ds = IptSimDataset(ext_csv=self.ext_csv, feature=self.feature)
-        self.test_ds = IptSimDataset(ext_csv=self.ext_csv, feature=self.feature)
-        self.val_ds = IptSimDataset(ext_csv=self.ext_csv, feature=self.feature)
+        self.train_ds = IptSimDataset(ext_csv=self.ext_csv, feature=self.feature, seed_idxs=self.train_idxs)
+        self.test_ds = IptSimDataset(ext_csv=self.ext_csv, feature=self.feature, seed_idxs=self.val_idxs)
+        self.val_ds = IptSimDataset(ext_csv=self.ext_csv, feature=self.feature, seed_idxs=self.test_idxs)
 
     def train_dataloader(self):
         return DataLoader(

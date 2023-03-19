@@ -64,7 +64,8 @@ class IptSimDataset(Dataset):
                 "label": self.seed_labels[i].astype(np.int64),
                 "features": self.load_features([replace_ext(f["fpath"])])[0],
             }
-            for i, f in tqdm.tqdm(enumerate(self.seed_files))
+            for i, f in tqdm.tqdm(enumerate(self.seed_files)) 
+            if i in self.seed_idxs
         ]
 
     def load_extended_files(self):
@@ -87,7 +88,7 @@ class IptSimDataset(Dataset):
 
         self.filelist = self.seed_filelist + ext_filelist
 
-    def load_features(self, filelist):
+    def load_features(self, filelist, eps=1e-3):
         self.load_feature_stats()
 
         features = []
@@ -95,7 +96,7 @@ class IptSimDataset(Dataset):
             fpath = f
             Sx = np.load(os.path.join(self.feature_path, fpath))
             if "scat1d" in self.feature or "jtfs" in self.feature:
-                Sx = np.log1p(Sx / (1e-3 * self.mean))
+                Sx = np.log1p(Sx / (eps * self.mean))
             features.append(Sx)
         features = torch.tensor(np.stack(features))
         return features
