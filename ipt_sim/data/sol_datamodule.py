@@ -2,7 +2,7 @@ import abc
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 
-from ipt_sim.data import IptSimDataset, InstrumentSplitGenerator
+from ipt_sim.data.loaders import IptSimDataset, InstrumentSplitGenerator
 
 
 class BaseDataModule(pl.LightningDataModule):
@@ -48,8 +48,9 @@ class SolIPTSimDataModule(pl.LightningDataModule):
         self.num_workers = num_workers
 
         self.split_gen = InstrumentSplitGenerator()
-        self.train_idxs, _, _ = self.split_gen.split()
-        self.val_idxs, self.test_idxs = None
+        self.split_gen.split(self.split_gen.instruments[0])
+        self.train_idxs = self.split_gen.train_idxs 
+        self.val_idxs, self.test_idxs = None, self.split_gen.test_idxs
         self.seed_csv = seed_csv
         self.ext_csv = ext_csv
         self.feature = feature

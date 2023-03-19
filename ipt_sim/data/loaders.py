@@ -84,6 +84,7 @@ class IptSimDataset(Dataset):
                 "features": self.load_features([replace_ext(f["filepath"])])[0],
             }
             for f in tqdm.tqdm(self.ext_files)
+            if int(f["seed_id"]) in self.seed_idxs
         ]
 
         self.filelist = self.seed_filelist + ext_filelist
