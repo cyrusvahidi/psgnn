@@ -253,17 +253,73 @@ class MFCCSOLExtractor(SOLExtractor):
         np.save(os.path.join(stats_path, "var"), var)
 
 
+
+import tensorflow as tf
+import tensorflow_hub as hub
+import tensorflow_io as tfio
+
+
+@tf.function
+def load_wav_16k_mono(filename):
+    """ Load a WAV file, convert it to a float tensor, resample to 16 kHz single-channel audio. """
+    file_contents = tf.io.read_file(filename)
+    wav, sample_rate = tf.audio.decode_wav(
+        file_contents,
+        desired_channels=1)
+    wav = tf.squeeze(wav, axis=-1)
+    sample_rate = tf.cast(sample_rate, dtype=tf.int64)
+    wav = tfio.audio.resample(wav, rate_in=sample_rate, rate_out=16000)
+    return wav
+
+
+class YAMNETSOLExtractor(SOLExtractor):
+    def __init__(self, sol_dir, input_sr=44100, target_sr=16000):
+
+        super().__init__(
+            sol_dir, os.path.join(sol_dir, "yamnet"), 44100, input_sr, target_sr
+        )
+
+        self.samples = []
+
+        yamnet_model_handle = 'https://tfhub.dev/google/yamnet/1'
+        self.yamnet_model = hub.load(yamnet_model_handle)
+
+
+    def extract(self):
+        for idx, filepath in enumerate(tqdm(self.all_files)):
+            dirname, fname = os.path.dirname(filepath), get_fname(filepath)
+            fulldir = os.path.join(self.output_dir, dirname)
+            make_directory(fulldir)
+            if not os.path.exists(os.path.join(fulldir, fname) + ".npy"):
+                audio = load_wav_16k_mono(os.path.join(self.sol_dir, filepath))
+                _, embeddings, _ = self.yamnet_model(audio)
+                import pdb; pdb.set_trace()
+                embeddings_mean = embeddings.mean(axis=0)
+                self.samples.append(embeddings_mean)
+                np.save(os.path.join(fulldir, fname), embeddings_mean)
+
+    def save_stats(self):
+        # reshape to (n_examples x timesteps, embedding_size)
+        samples = np.stack(self.samples).reshape(-1, self.samples[0].shape[0])
+        mu = samples.mean(axis=0)
+        var = samples.var(axis=0)
+        stats_path = os.path.join(self.output_dir, "stats")
+        make_directory(stats_path)
+        np.save(os.path.join(stats_path, "mu"), mu)
+        np.save(os.path.join(stats_path, "var"), var)
+
+
 def extract_jtfs_stats(
     sol_dir="/import/c4dm-datasets/SOL_0.9_HQ/",
     jtfs_kwargs={
         "shape": 2**16,
-        "Q": (8, 2),
+        "Q": (8, 1),
         "Q_fr": 1,
         "J": 12,
         "J_fr": 4,
     },
-    F_octaves=2,
-    feature="jtfs"
+    F_octaves=1,
+    feature="yamnet"
 ):
     """Extract training set statistics from Joint Time-Frequency Scattering
     Coefficients.
@@ -276,6 +332,8 @@ def extract_jtfs_stats(
         extractor = JTFSExtractorSOL(sol_dir, jtfs_kwargs, F_octaves=F_octaves)
     elif feature == "openl3":
         extractor = OpenL3SOLExtractor(sol_dir)
+    elif feature == "yamnet":
+        extractor = YAMNETSOLExtractor(sol_dir)
     elif "scat1d" in feature:
         extractor = Scat1DExtractorSOL(sol_dir, max_order=int(feature.split("_")[-1]))
     elif feature == "mfcc":

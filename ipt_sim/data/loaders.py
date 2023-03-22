@@ -15,6 +15,7 @@ class IptSimDataset(Dataset):
         sol_dir: str = "/import/c4dm-datasets/SOL_0.9_HQ/",
         feature: str = "jtfs",
         seed_idxs=None,
+        test_idxs=None
     ):
         """SOL Instrumental Playing Technique Dataset
         Args:
@@ -37,7 +38,10 @@ class IptSimDataset(Dataset):
         self.seed_labels = sio.loadmat(f_seed_labels)["ensemble"][0]
         self.seed_idxs = (
             seed_idxs if seed_idxs is not None else list(range(len(self.seed_labels)))
-        )
+        ) 
+        self.test_idxs = (
+            test_idxs if test_idxs is not None else list(range(len(self.seed_labels)))
+        ) 
         self.feature_path = os.path.join(sol_dir, feature)
         self.load_seed_files()
         if ext_csv:
@@ -94,11 +98,14 @@ class IptSimDataset(Dataset):
 
         features = []
         for f in filelist:
-            fpath = f
-            Sx = np.load(os.path.join(self.feature_path, fpath))
-            if "scat1d" in self.feature or "jtfs" in self.feature:
-                Sx = np.log1p(Sx / (eps * self.mean))
-            features.append(Sx)
+            if self.feature == "rand":
+                features.append(torch.randn(512))
+            else:
+                fpath = f
+                Sx = np.load(os.path.join(self.feature_path, fpath))
+                if "scat1d" in self.feature or "jtfs" in self.feature:
+                    Sx = np.log1p(Sx / (eps * self.mean))
+                features.append(Sx)
         features = torch.tensor(np.stack(features))
         return features
 

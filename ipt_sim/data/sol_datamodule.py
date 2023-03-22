@@ -48,7 +48,7 @@ class SolIPTSimDataModule(pl.LightningDataModule):
         self.num_workers = num_workers
 
         self.split_gen = InstrumentSplitGenerator()
-        self.split_gen.split(self.split_gen.instruments[0])
+        self.split_gen.split(self.split_gen.instruments[1])
         self.train_idxs = self.split_gen.train_idxs 
         self.val_idxs, self.test_idxs = None, self.split_gen.test_idxs
         self.seed_csv = seed_csv
@@ -57,8 +57,8 @@ class SolIPTSimDataModule(pl.LightningDataModule):
 
     def setup(self, stage=None):
         self.train_ds = IptSimDataset(ext_csv=self.ext_csv, feature=self.feature, seed_idxs=self.train_idxs)
-        self.test_ds = IptSimDataset(ext_csv=self.ext_csv, feature=self.feature, seed_idxs=self.val_idxs)
-        self.val_ds = IptSimDataset(ext_csv=self.ext_csv, feature=self.feature, seed_idxs=self.test_idxs)
+        self.val_ds = IptSimDataset(ext_csv=self.ext_csv, feature=self.feature, seed_idxs=self.val_idxs)
+        self.test_ds = IptSimDataset(ext_csv=self.ext_csv, feature=self.feature, test_idxs=self.test_idxs)
 
     def train_dataloader(self):
         return DataLoader(

@@ -8,3 +8,4 @@
 
 ## Usage
 - `python ipt_sim/train.py`
+- `python ipt_sim/train.py data=extended model=proxy data.feature=openl3 model.prune_accuracy=True`

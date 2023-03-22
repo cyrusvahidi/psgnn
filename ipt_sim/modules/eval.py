@@ -6,11 +6,14 @@ import scipy.io as sio
 from torchmetrics import Metric
 from .loss import L2dist
 
+
 def pairwise_euclidean(a, b, p: int = 2):
     return torch.cdist(a, b, p=p)
 
+
 def pairwise(a, b, p: float = 2):
     return F.pairwise_distance(a, b, p=p)
+
 
 class EvalMetric(Metric):
     def __init__(self, distance=pairwise, dist_sync_on_step=False):
@@ -27,7 +30,6 @@ class EvalMetric(Metric):
     def _validate_embeddings(self, embeddings: Union[torch.Tensor, dict]):
         pass
 
-
     def _compute_triplet_distances(self, triplets: torch.Tensor):
         dist_a_i = self.distance(triplets[:, 0, :], triplets[:, 1, :])
         dist_a_j = self.distance(triplets[:, 0, :], triplets[:, 2, :])
@@ -36,16 +38,18 @@ class EvalMetric(Metric):
 
 
 class TimbreTripletKNNAgreement(EvalMetric):
-    def __init__(self, 
-                 test_triplets,
-                 distance=pairwise, 
-                 dist_sync_on_step=False,      
-                 k=5,
-                 k_nn_triplets = False,):
+    def __init__(
+        self,
+        test_triplets,
+        distance=pairwise,
+        dist_sync_on_step=False,
+        k=5,
+        k_nn_triplets=False,
+    ):
         super().__init__(distance=L2dist(2), dist_sync_on_step=dist_sync_on_step)
 
         self.test_triplets = test_triplets
-        self.k = k 
+        self.k = k
         self.k_nn_triplets = k_nn_triplets
 
     def update(self, triplets: Union[torch.Tensor, dict]):
@@ -61,7 +65,7 @@ class TimbreTripletKNNAgreement(EvalMetric):
         return (distances[:, 0] < distances[:, 1]).float().sum() / len(distances)
 
     def get_k_nn_triplets(self, target, anchor_idx):
-        ''' Returns all possible pairs (i, j) for anchor a 
+        """Returns all possible pairs (i, j) for anchor a
             where target[a, i] < target[a, j]
 
         Args:
@@ -69,11 +73,16 @@ class TimbreTripletKNNAgreement(EvalMetric):
             anchor_idx: index of the considered anchor
         Returns:
             i_j_idxs: tensor of shape (N, 2) containing indices (i, j)
-        '''
+        """
         idxs = self.get_k_nn(target, anchor_idx)
-        
-        i_j_idxs = torch.stack([idxs[[i, j]] for i in range(len(idxs) - 1) 
-                                    for j in range(i + 1, len(idxs))])
+
+        i_j_idxs = torch.stack(
+            [
+                idxs[[i, j]]
+                for i in range(len(idxs) - 1)
+                for j in range(i + 1, len(idxs))
+            ]
+        )
         return i_j_idxs
 
     def get_triplets(self, target, anchor_idx):
@@ -89,37 +98,38 @@ class TimbreTripletKNNAgreement(EvalMetric):
 
     def get_k_nn(self, target, anchor_idx):
         sorted_idxs = self.get_sorted_idxs(target, anchor_idx)
-        k_nn = sorted_idxs[sorted_idxs != anchor_idx][:self.k]
+        k_nn = sorted_idxs[sorted_idxs != anchor_idx][: self.k]
         return k_nn
 
     def get_not_k_nn(self, target, anchor_idx):
         sorted_idxs = self.get_sorted_idxs(target, anchor_idx)
-        j = sorted_idxs[self.k + 1:]
+        j = sorted_idxs[self.k + 1 :]
         return j
 
 
 class RandomTripletAgreement(TimbreTripletKNNAgreement):
-
     def __init__(
         self,
         dataset=None,
         distance=pairwise_euclidean,
         dist_sync_on_step=False,
         k=5,
-        anchor_idx = None,
-        k_nn_triplets = False,
-        knowledge = 0
+        anchor_idx=None,
+        k_nn_triplets=False,
+        knowledge=0,
     ):
-        ''' Randomly evaluate agreements to the triplet constraint D(a, i) < D(a, j)
+        """Randomly evaluate agreements to the triplet constraint D(a, i) < D(a, j)
             from a dissimilarity matrix D
-        
+
         Args:
             k -- int: k-nearest neighborhood to evaluate for each anchor
             anchor_idx -- int: if not None, evaluate around a single anchor,
             k_nn_triplets -- bool: selects triplets from an item's k-nearest neighborhood
-        '''
-        super().__init__(dataset, distance, dist_sync_on_step, k, anchor_idx, k_nn_triplets)
-         
+        """
+        super().__init__(
+            dataset, distance, dist_sync_on_step, k, anchor_idx, k_nn_triplets
+        )
+
         self.knowledge = knowledge
 
     def _compute_item_error(self, target: torch.Tensor, distances: torch.Tensor):
@@ -135,8 +145,10 @@ class RandomTripletAgreement(TimbreTripletKNNAgreement):
                 i_j_idxs = self.get_triplets(target, anchor)
             i = i_j_idxs[:, 0]
             j = i_j_idxs[:, 1]
-            
-            triplet_agreements.append((distances[anchor, i] < distances[anchor, j]).long())
+
+            triplet_agreements.append(
+                (distances[anchor, i] < distances[anchor, j]).long()
+            )
 
         triplet_agreements = torch.cat(triplet_agreements)
         num_knowledge = int(len(triplet_agreements) * self.knowledge)
@@ -147,46 +159,55 @@ class RandomTripletAgreement(TimbreTripletKNNAgreement):
         idxs_random = perm[num_knowledge:]
 
         triplet_agreements[idxs] = 1
-        triplet_agreements[idxs_random] = torch.randint(0, 2, (len(idxs_random), ))
+        triplet_agreements[idxs_random] = torch.randint(0, 2, (len(idxs_random),))
         return torch.sum(triplet_agreements) / len(triplet_agreements)
 
 
-class PatK():
-    def __init__(self, 
-                 k=5, 
-                 pruned=False,
-                 sim_mat="./lostanlen2020jasmp/experiments/similarity/ticelJudgments.mat"):
-        self.k = k 
-        self.pruned = pruned 
+class PatK:
+    def __init__(
+        self,
+        k=5,
+        pruned=False,
+        sim_mat="./lostanlen2020jasmp/experiments/similarity/ticelJudgments.mat",
+        test_idxs=[],
+    ):
+        self.k = k
+        self.pruned = pruned
         mat = sio.loadmat(sim_mat)
-        self.labels = mat['ensemble'][0]
+        self.labels = mat["ensemble"][0]
 
     def p_at_k(self, pdists, idx, filelist):
         # get top k queries
         sorted_idxs = pdists[idx].argsort()
-        sorted_idxs = sorted_idxs[sorted_idxs != idx][:100]
+        sorted_idxs = sorted_idxs[sorted_idxs != idx][:500]
         # convert all items to their seed idx
 
-        anchor_seed_id = filelist[idx]['seed_id']
-        top_k = np.array([filelist[int(i)]['seed_id'] 
-                            for i in sorted_idxs 
-                            if filelist[int(i)]['seed_id'] != anchor_seed_id or not self.pruned])[:self.k]
+        anchor_seed_id = filelist[idx]["seed_id"]
+        top_k = np.array(
+            [
+                filelist[int(i)]["seed_id"]
+                for i in sorted_idxs
+                if (filelist[int(i)]["seed_id"] != anchor_seed_id or not self.pruned)
+                # and filelist[int(i)]["seed_id"] not in self.test_idxs # compare test set queries only to train set retrievals
+            ]
+        )[: self.k]
         if len(top_k) > 0:
-            top_k_labels = self.labels[top_k] 
+            top_k_labels = self.labels[top_k]
             anchor_label = self.labels[anchor_seed_id]
-            
+
             n_correct = (anchor_label == top_k_labels).sum() if len(top_k) else 0
             return n_correct, self.k
         else:
             return 0, 0
 
-    def __call__(self, features, filelist):
+    def __call__(self, features, filelist, test_idxs):
+        self.test_idxs = test_idxs
         pdists = torch.cdist(features, features)
         n_correct = 0
         n_total = 0
         for i in range(len(pdists)):
+            # if filelist[int(i)]["seed_id"] in self.test_idxs: # only test items as the query
             _n_correct, _n_total = self.p_at_k(pdists, i, filelist)
             n_correct += _n_correct
             n_total += _n_total
         return n_correct / n_total
-    
