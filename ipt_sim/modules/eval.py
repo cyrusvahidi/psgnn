@@ -179,7 +179,7 @@ class PatK:
     def p_at_k(self, pdists, idx, filelist):
         # get top k queries
         sorted_idxs = pdists[idx].argsort()
-        sorted_idxs = sorted_idxs[sorted_idxs != idx][:500]
+        sorted_idxs = sorted_idxs[sorted_idxs != idx][:100]
         # convert all items to their seed idx
 
         anchor_seed_id = filelist[idx]["seed_id"]

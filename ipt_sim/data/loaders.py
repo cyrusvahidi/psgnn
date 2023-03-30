@@ -1,9 +1,12 @@
 import os, torch, numpy as np, pandas as pd, scipy.io as sio, tqdm
 
+from sklearn.neighbors import NearestNeighbors
 from sklearn.model_selection import StratifiedKFold, train_test_split
 from torch.utils.data import Dataset
 
-from ipt_sim.utils import get_sol_filepath, replace_ext
+from torch_geometric.utils import dense_to_sparse
+
+from ipt_sim.utils import replace_ext
 
 
 class IptSimDataset(Dataset):
@@ -15,7 +18,7 @@ class IptSimDataset(Dataset):
         sol_dir: str = "/import/c4dm-datasets/SOL_0.9_HQ/",
         feature: str = "jtfs",
         seed_idxs=None,
-        test_idxs=None
+        test_idxs=None,
     ):
         """SOL Instrumental Playing Technique Dataset
         Args:
@@ -38,10 +41,10 @@ class IptSimDataset(Dataset):
         self.seed_labels = sio.loadmat(f_seed_labels)["ensemble"][0]
         self.seed_idxs = (
             seed_idxs if seed_idxs is not None else list(range(len(self.seed_labels)))
-        ) 
+        )
         self.test_idxs = (
             test_idxs if test_idxs is not None else list(range(len(self.seed_labels)))
-        ) 
+        )
         self.feature_path = os.path.join(sol_dir, feature)
         self.load_seed_files()
         if ext_csv:
@@ -68,7 +71,7 @@ class IptSimDataset(Dataset):
                 "label": self.seed_labels[i].astype(np.int64),
                 "features": self.load_features([replace_ext(f["fpath"])])[0],
             }
-            for i, f in tqdm.tqdm(enumerate(self.seed_files)) 
+            for i, f in tqdm.tqdm(enumerate(self.seed_files))
             if i in self.seed_idxs
         ]
 
@@ -143,6 +146,59 @@ class IptSimDataset(Dataset):
 
     def __len__(self):
         return len(self.filelist)
+
+
+class IptSimGraphDataset(IptSimDataset):
+    def __init__(
+        self,
+        f_seed_labels: str = "./jasmp/judgements.mat",
+        seed_csv: str = "./jasmp/seed_filelist.csv",
+        ext_csv: str = "jasmp/extended_pitch_F4.csv",
+        sol_dir: str = "/import/c4dm-datasets/SOL_0.9_HQ/",
+        feature: str = "jtfs",
+        seed_idxs=None,
+        test_idxs=None,
+        n_neighbors=30.0,
+    ):
+        """SOL Instrumental Playing Technique Dataset
+        Args:
+            f_seed_labels: str
+                file path to human judgement labels for each of the 78 seed audio samples
+            seed_csv: str
+                file path to csv containing metadata for the 78 seed audio samples
+            ext_csv: str
+                file path to csv containing metadata for the extended set of sounds
+                if None, only seed files are loaded
+            sol_dir: str
+                path to directory containing SOL_0.9_HQ dataset
+            feature: str
+                identifier for feature to load: ['jtfs', 'mfcc', 'scat1d_o1', 'scat1d_o2']
+        """
+        super().__init__(
+            f_seed_labels, seed_csv, ext_csv, sol_dir, feature, seed_idxs, test_idxs
+        )
+
+        self.n_neighbors = n_neighbors
+
+        self.init_adjacency_matrix()
+
+    def init_adjacency_matrix(self):
+        self.nbrs = NearestNeighbors(n_neighbors=int(self.n_neighbors), p=2)
+        X = self.features.numpy()
+        self.nbrs.fit(X)
+        nn = self.nbrs.kneighbors(X)[1]
+        self.A = torch.zeros((X.shape[0], X.shape[0]), dtype=torch.long)
+        for i in range(len(self.A)):
+            self.A[i, nn[i]] = 1
+
+        self.edge_index = dense_to_sparse(self.A)[0]
+        # self.A.fill_diagonal_(0)
+
+    def __getitem__(self, idx):
+        return super().__getitem__(idx)
+
+    def __len__(self):
+        return super().__len__()
 
 
 class SplitGenerator:
