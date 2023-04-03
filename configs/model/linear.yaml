@@ -24,4 +24,4 @@ net:
   input_size: 512
   output_size: 512
 
-prune_accuracy: False
+prune_accuracy: True

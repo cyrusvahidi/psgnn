@@ -84,22 +84,22 @@ class SolIPTSimLitModule(LightningModule):
 
     #     self.log("train/acc", acc, prog_bar=True)
 
-    def validation_step(self, batch: Any, batch_idx: int):
-        loss = self.model_step(batch)
+    # def validation_step(self, batch: Any, batch_idx: int):
+    #     loss = self.model_step(batch)
 
-        # update and log metrics
-        self.log("val/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
+    #     # update and log metrics
+    #     self.log("val/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
 
-        # we can return here dict with any tensors
-        # and then read it in some callback or in `training_epoch_end()` below
-        # remember to always return loss from `training_step()` or backpropagation will fail!
-        return {"loss": loss}
+    #     # we can return here dict with any tensors
+    #     # and then read it in some callback or in `training_epoch_end()` below
+    #     # remember to always return loss from `training_step()` or backpropagation will fail!
+    #     return {"loss": loss}
 
-    def validation_epoch_end(self, outputs: List[Any]):
-        batch_losses = [x["loss"] for x in outputs]
-        loss = torch.stack(batch_losses).mean() 
+    # def validation_epoch_end(self, outputs: List[Any]):
+    #     batch_losses = [x["loss"] for x in outputs]
+    #     loss = torch.stack(batch_losses).mean() 
 
-        self.log("val_loss", loss, prog_bar=True)
+    #     self.log("val_loss", loss, prog_bar=True)
 
     def test_step(self, batch: Any, batch_idx: int):
         loss = self.model_step(batch)

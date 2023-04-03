@@ -4,8 +4,6 @@ from sklearn.neighbors import NearestNeighbors
 from sklearn.model_selection import StratifiedKFold, train_test_split
 from torch.utils.data import Dataset
 
-from torch_geometric.utils import dense_to_sparse
-
 from ipt_sim.utils import replace_ext
 
 
@@ -252,6 +250,7 @@ class KFoldsSplitGenerator(SplitGenerator):
         seed_csv: str = "./jasmp/seed_filelist.csv",
         n_splits=4,
         overfit: bool = False,
+        val_set=True
     ):
         super().__init__(seed_csv)
         self.idxs = [i for i in range(len(self.df))]
@@ -259,7 +258,7 @@ class KFoldsSplitGenerator(SplitGenerator):
         self.overfit = overfit
 
         self.skf = StratifiedKFold3().split(
-            np.array(self.idxs), np.array(self.labels), n_splits=n_splits
+            np.array(self.idxs), np.array(self.labels), n_splits=n_splits, val_set=val_set
         )
 
         self.split_id = -1
@@ -272,11 +271,14 @@ class KFoldsSplitGenerator(SplitGenerator):
 
 
 class StratifiedKFold3:
-    def split(self, X, y, n_splits=None):
+    def split(self, X, y, n_splits=None, val_set=True):
         s = StratifiedKFold(n_splits).split(X, y)
         for train_idxs, test_idxs in s:
             y_train = y[train_idxs]
-            train_idxs, val_idxs = train_test_split(
-                train_idxs, stratify=y_train, test_size=(1 / (n_splits))
-            )
-            yield train_idxs, val_idxs, test_idxs
+            if val_set:
+                train_idxs, val_idxs = train_test_split(
+                    train_idxs, stratify=y_train, test_size=(1 / (n_splits))
+                )
+                yield train_idxs, val_idxs, test_idxs
+            else: 
+                yield train_idxs, None, test_idxs

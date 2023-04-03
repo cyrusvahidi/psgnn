@@ -98,12 +98,12 @@ class RelationNetwork(nn.Module):
         out = self.fc3(out)
         return out 
 
-class LinearProjection(nn.Module):
-    def __init__(self, input_size, output_size):
+class GraphNet(nn.Module):
+    def __init__(self, input_size, output_size, hidden_dim=128):
         super().__init__()
-        self.gcn = GCN(512, 128, 512)
+        self.gcn = GCN(input_size, hidden_dim, output_size)
         self.L = nn.Linear(input_size, output_size, bias=False)
-        self.relation = RelationNetwork(512)
+        self.relation = RelationNetwork(input_size)
         nn.init.kaiming_uniform_(self.L.weight, mode="fan_in", nonlinearity="relu")
         
     def forward(self, x):
@@ -132,3 +132,34 @@ class LinearProjection(nn.Module):
         g = dgl.graph((src, dst))
         out = self.gcn(g,x)
         return out
+
+
+class LinearProjection(nn.Module):
+    def __init__(self, input_size, output_size):
+        super().__init__()
+        self.L = nn.Linear(input_size, output_size, bias=False)
+        nn.init.kaiming_uniform_(self.L.weight, mode="fan_in", nonlinearity="relu")
+        
+    def forward(self, x):
+        out = self.L(x)
+        return out
+
+
+class MLP(nn.Module):
+    def __init__(self, input_size, output_size, hidden_dim=128):
+        super().__init__()
+        self.layers = nn.ModuleList()
+        self.layers += [
+            nn.Linear(input_size, hidden_dim),
+            nn.ReLU(),
+            nn.Dropout(0.5)
+        ]
+        L = nn.Linear(hidden_dim, output_size, bias=False)
+        nn.init.kaiming_uniform_(L.weight, mode="fan_in", nonlinearity="relu")
+        self.layers.append(L)
+        
+    def forward(self, x):
+        h = x
+        for i, layer in enumerate(self.layers):
+            h = layer(h)
+        return h

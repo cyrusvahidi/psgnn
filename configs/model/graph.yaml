@@ -1,0 +1,27 @@
+
+_target_: ipt_sim.models.triplet_module.SolIPTSimLitModule
+
+optimizer:
+  _target_: torch.optim.AdamW
+  _partial_: true
+  lr: 0.05 # 0.05
+  weight_decay: 1e-4
+
+scheduler:
+  _target_: torch.optim.lr_scheduler.StepLR
+  _partial_: true
+  step_size: 10
+  gamma: 0.8
+
+criterion:
+  _target_: pytorch_metric_learning.losses.ProxyAnchorLoss
+  margin: 0.1
+  num_classes: 19
+  embedding_size: 512
+
+net:
+  _target_: ipt_sim.models.components.linear.GraphNet
+  input_size: 512
+  output_size: 512
+
+prune_accuracy: True

@@ -1,0 +1,5 @@
+scat1d: 338
+openl3: 512
+mfcc: 40
+rand: 512
+jtfs: 746
