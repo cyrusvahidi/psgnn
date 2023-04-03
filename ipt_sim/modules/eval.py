@@ -200,8 +200,7 @@ class PatK:
         else:
             return 0, 0
 
-    def __call__(self, features, filelist, test_idxs):
-        self.test_idxs = test_idxs
+    def __call__(self, features, filelist):
         pdists = torch.cdist(features, features)
         n_correct = 0
         n_total = 0

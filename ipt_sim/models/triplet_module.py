@@ -110,16 +110,19 @@ class SolIPTSimLitModule(LightningModule):
         return {"loss": loss}
 
     def test_epoch_end(self, outputs: List[Any]):
-        ds = self.trainer.test_dataloaders[0].dataset 
+        subset = self.trainer.test_dataloaders[0].dataset 
+        idxs = subset.indices 
+        features_id = subset.dataset.features[idxs]
         batch_sz = 64
         features = torch.cat(
             [
-                self.net(ds.features[i : i + batch_sz].to(self.device))
-                for i in range(0, len(ds.features), batch_sz)
+                self.net(features_id[i : i + batch_sz].to(self.device))
+                for i in range(0, len(features_id), batch_sz)
             ]
         ) 
-        acc = self.test_acc(features, ds.filelist, test_idxs=ds.test_idxs)
-        acc_euclidean = self.test_acc(ds.features, ds.filelist, test_idxs=ds.test_idxs)
+        filelist = [self.trainer.test_dataloaders[0].dataset.dataset.filelist[i] for i in idxs]
+        acc = self.test_acc(features, filelist)
+        acc_euclidean = self.test_acc(features_id, filelist)
 
         self.log("test/acc", acc, prog_bar=True)
         self.log("test/acc_euclidean", acc_euclidean, prog_bar=True)

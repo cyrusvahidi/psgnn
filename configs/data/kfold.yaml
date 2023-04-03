@@ -1,0 +1,6 @@
+_target_: ipt_sim.data.sol_datamodule.KFoldSolIPTSimDataModule
+batch_size: 512
+num_workers: 4
+ext_csv: ./jasmp/extended_pitch_F4.csv
+feature: jtfs
+num_splits: 5

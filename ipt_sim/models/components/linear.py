@@ -150,7 +150,7 @@ class MLP(nn.Module):
         super().__init__()
         self.layers = nn.ModuleList()
         self.layers += [
-            nn.Linear(input_size, hidden_dim),
+            nn.Linear(input_size, hidden_dim),  
             nn.ReLU(),
             nn.Dropout(0.5)
         ]
