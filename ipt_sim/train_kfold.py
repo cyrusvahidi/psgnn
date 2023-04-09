@@ -25,10 +25,9 @@ def train(cfg: DictConfig) -> Tuple[dict, dict]:
 
     model: LightningModule = hydra.utils.instantiate(cfg.model)
 
-    trainer: Trainer = hydra.utils.instantiate(cfg.trainer)
-
     metrics = []
     for k in range(cfg.data.num_splits):
+        trainer: Trainer = hydra.utils.instantiate(cfg.trainer)
         datamodule: LightningDataModule = hydra.utils.instantiate(
             cfg.data,
             k=k,

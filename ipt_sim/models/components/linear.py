@@ -13,10 +13,10 @@ class GCN(nn.Module):
         self.layers = nn.ModuleList()
         # two-layer GCN
         self.layers.append(
-            dglnn.GraphConv(in_size, hid_size, activation=F.relu)
+            dglnn.GraphConv(in_size, hid_size, activation=F.elu)
         )
-        self.layers.append(dglnn.GraphConv(hid_size, out_size))
-        self.dropout = nn.Dropout(0.5)
+        self.layers.append(dglnn.GraphConv(hid_size, out_size, activation=F.elu))
+        self.dropout = nn.Dropout(0.1)
 
     def forward(self, g, features):
         h = features
@@ -102,9 +102,8 @@ class GraphNet(nn.Module):
     def __init__(self, input_size, output_size, hidden_dim=128):
         super().__init__()
         self.gcn = GCN(input_size, hidden_dim, output_size)
-        self.L = nn.Linear(input_size, output_size, bias=False)
         self.relation = RelationNetwork(input_size)
-        nn.init.kaiming_uniform_(self.L.weight, mode="fan_in", nonlinearity="relu")
+        self.mlp = MLP(output_size, output_size, hidden_dim)
         
     def forward(self, x):
         #knn_g = dgl.knn_graph(x, 3,dist='cosine')
@@ -130,7 +129,7 @@ class GraphNet(nn.Module):
         S       = D1*W*D2
         src, dst = torch.nonzero(S,as_tuple=True)
         g = dgl.graph((src, dst))
-        out = self.gcn(g,x)
+        out = self.mlp(self.gcn(g,x))
         return out
 
 
