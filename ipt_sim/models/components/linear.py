@@ -246,7 +246,7 @@ class Graph_Model(nn.Module):
 
         self.backbone = nn.ModuleList([])
         self.channels = 512
-        self.blocks = 3
+        self.blocks = 2
         in_channels = self.channels
         self.backbone += [Sequential(Graph_Block(in_channels),
                                       FFN(in_channels, in_channels// 4)
