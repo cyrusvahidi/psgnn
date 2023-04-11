@@ -20,7 +20,7 @@ criterion:
   embedding_size: 512
 
 net:
-  _target_: ipt_sim.models.components.linear.GraphNet
+  _target_: ipt_sim.models.components.linear.Graph_Model
   input_size: 512
   output_size: 512
 
