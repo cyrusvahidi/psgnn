@@ -6,6 +6,10 @@ import torch.nn.functional as F
 from dgl.nn.pytorch import EdgeConv
 import numpy as np
 import torch 
+import torch.nn.functional as F
+import math 
+from torch.nn import Sequential 
+from timm.models.layers import DropPath
 
 class GCN(nn.Module):
     def __init__(self, in_size, hid_size, out_size):
@@ -99,8 +103,10 @@ class RelationNetwork(nn.Module):
         out = self.fc3(out)
         return out 
 
+
+
 class GraphNet(nn.Module):
-    def __init__(self, input_size, output_size, hidden_dim=128):
+    def __init__(self, input_size, output_size, hidden_dim=1024):
         super().__init__()
         self.gcn = GCN(input_size, hidden_dim, output_size)
         self.relation = RelationNetwork(input_size)
@@ -128,11 +134,129 @@ class GraphNet(nn.Module):
         D1      = torch.unsqueeze(D_sqrt_inv,1).repeat(1,N)
         D2      = torch.unsqueeze(D_sqrt_inv,0).repeat(N,1)
         S       = D1*W*D2
+        
         src, dst = torch.nonzero(S,as_tuple=True)
+        
+        
         g = dgl.graph((src, dst))
         out = self.mlp(self.gcn(g,x))
         return out
 
+class DynGCN(nn.Module):
+
+    def __init__(self,channels):
+        super(DynGCN, self).__init__()
+        hidden_dim = channels//2
+        self.layers = nn.ModuleList()
+        # two-layer GCN
+        self.layers.append(
+            dglnn.GraphConv(channels, hidden_dim, activation=F.elu)
+        )
+        #self.layers.append(dglnn.GraphConv(hidden_dim, hidden_dim,activation=F.elu))
+        self.dropout = nn.Dropout(0.1)
+        self.relation = RelationNetwork(channels)
+        
+    def forward(self, x):
+        N, d    = x.shape[0], x.shape[1]
+        eps = np.finfo(float).eps
+        self.sigma = self.relation(x)
+        emb_x = torch.div(x,(self.sigma+eps))
+        emb1 = torch.unsqueeze(emb_x,1) 
+        emb2 = torch.unsqueeze(emb_x,0)
+        W = ((emb1-emb2)**2).mean(2)
+        W = torch.exp(-W/2)
+        
+        topk, indices = torch.topk(W, 3)
+        mask = torch.zeros_like(W)
+        mask = mask.scatter(1, indices, 1)
+        mask = ((mask+torch.t(mask))>0).type(torch.float32)      
+        W    = W*mask
+        D       = W.sum(0)
+        D_sqrt_inv = torch.sqrt(1.0/(D+eps))
+        D1      = torch.unsqueeze(D_sqrt_inv,1).repeat(1,N)
+        D2      = torch.unsqueeze(D_sqrt_inv,0).repeat(N,1)
+        S       = D1*W*D2
+        
+        src, dst = torch.nonzero(S,as_tuple=True)
+        
+        
+        g = dgl.graph((src, dst))
+        
+        for i, layer in enumerate(self.layers):
+            
+            h = self.dropout(x)
+            h = layer(g, x)
+        
+        return h
+
+class FFN(nn.Module):
+
+    def __init__(self,in_features,hidden_features=None,out_features=None,act='relu',drop_path=0.0):
+
+        super().__init__()
+
+        out_features = out_features or in_features
+        
+        hidden_features = hidden_features or in_features
+
+        self.fc1 = nn.Sequential( nn.Conv2d(in_features,hidden_features,1,stride=1,padding=0),nn.BatchNorm2d(hidden_features))
+        self.act = nn.ReLU()
+
+        self.fc2 = nn.Sequential(nn.Conv2d(hidden_features,out_features,1,stride=1,padding=0),nn.BatchNorm2d(out_features))
+        self.drop_path = DropPath(0.1)
+
+    
+    def forward(self,x):
+        
+        shortcut = x
+        x= x.unsqueeze(-1).unsqueeze(-1)
+        x = self.fc1(x)
+        x = self.act(x)
+        x = self.fc2(x)
+        x= x.squeeze(-1).squeeze(-1)
+        x = self.drop_path(x)+ shortcut
+        
+        return x
+
+class Graph_Block(nn.Module):
+
+    def __init__(self,in_channels):
+
+        super(Graph_Block, self).__init__()
+        self.channels = in_channels
+        self.graph_conv = DynGCN(in_channels)
+        self.fc = nn.Sequential(
+            nn.Conv2d(in_channels// 2, in_channels, 1, stride=1, padding=0),
+            nn.BatchNorm2d(in_channels),
+        )
+        self.drop_path = DropPath(0.1)
+
+    def forward(self,x):
+        _tmp = x
+        out = self.graph_conv(x)
+        out = out.unsqueeze(-1).unsqueeze(-1)
+        x = self.fc(out)
+        x = x.squeeze(-1).squeeze(-1)
+        x += _tmp
+        return x
+
+class Graph_Model(nn.Module):
+    def __init__(self,input_size, output_size, hidden_dim=1024):
+        super().__init__()
+
+        self.backbone = nn.ModuleList([])
+        self.channels = 512
+        self.blocks = 3
+        in_channels = self.channels
+        self.backbone += [Sequential(Graph_Block(in_channels),
+                                      FFN(in_channels, in_channels// 4)
+                                     ) for i in range(self.blocks)]
+        self.backbone = Sequential (*self.backbone)
+
+    def forward (self,x):
+
+        x = self.backbone(x)
+        return x
 
 class LinearProjection(nn.Module):
     def __init__(self, input_size, output_size):
@@ -163,3 +287,4 @@ class MLP(nn.Module):
         for i, layer in enumerate(self.layers):
             h = layer(h)
         return h
+
