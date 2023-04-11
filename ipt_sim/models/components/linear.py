@@ -24,6 +24,7 @@ class GCN(nn.Module):
             if i != 0:
                 h = self.dropout(h)
             h = layer(g, h)
+        h = h +features
         return h
 
 
