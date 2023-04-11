@@ -91,7 +91,7 @@ class JTFSExtractorSOL(SOLExtractor):
 
         # jtfs_kwargs["T"] = 2 ** int(np.log2(jtfs_kwargs["shape"]))
         self.jtfs = TimeFrequencyScattering(
-            **jtfs_kwargs, F=jtfs_kwargs["Q"][0] * F_octaves, format="time"
+            **jtfs_kwargs, format="time" #F=jtfs_kwargs["Q"][0] * F_octaves,
         ).cuda()
 
         self.samples = []
@@ -318,8 +318,8 @@ def extract_jtfs_stats(
         "J": 12,
         "J_fr": 4,
     },
-    F_octaves=1,
-    feature="yamnet"
+    F_octaves=0,
+    feature="jtfs"
 ):
     """Extract training set statistics from Joint Time-Frequency Scattering
     Coefficients.

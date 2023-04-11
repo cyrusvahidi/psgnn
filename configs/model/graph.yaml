@@ -4,8 +4,8 @@ _target_: ipt_sim.models.triplet_module.SolIPTSimLitModule
 optimizer:
   _target_: torch.optim.AdamW
   _partial_: true
-  lr: 0.05 # 0.05
-  weight_decay: 1e-4
+  lr: 0.05 
+  weight_decay: 1e-5 # 1e-[4
 
 scheduler:
   _target_: torch.optim.lr_scheduler.StepLR
