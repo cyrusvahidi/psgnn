@@ -176,7 +176,7 @@ class PatK:
         mat = sio.loadmat(sim_mat)
         self.labels = mat["ensemble"][0]
 
-    def p_at_k(self, pdists, idx, filelist):
+    def p_at_k(self, pdists, labels, idx, filelist):
         # get top k queries
         sorted_idxs = pdists[idx].argsort()
         sorted_idxs = sorted_idxs[sorted_idxs != idx][:100]
@@ -185,28 +185,27 @@ class PatK:
         anchor_seed_id = filelist[idx]["seed_id"]
         top_k = np.array(
             [
-                filelist[int(i)]["seed_id"]
+                i
                 for i in sorted_idxs
-                if (filelist[int(i)]["seed_id"] != anchor_seed_id or not self.pruned)
+                if (filelist[int(i)]["seed_id"] != anchor_seed_id or not self.pruned) # if pruned check IMT is not same``
                 # and filelist[int(i)]["seed_id"] not in self.test_idxs # compare test set queries only to train set retrievals
             ]
         )[: self.k]
         if len(top_k) > 0:
-            top_k_labels = self.labels[top_k]
-            anchor_label = self.labels[anchor_seed_id]
+            top_k_labels = labels[top_k]
 
-            n_correct = (anchor_label == top_k_labels).sum() if len(top_k) else 0
+            n_correct = (labels[idx] == top_k_labels).sum() if len(top_k) else 0
             return n_correct, self.k
         else:
             return 0, 0
 
-    def __call__(self, features, filelist):
+    def __call__(self, features, labels, filelist):
         pdists = torch.cdist(features, features)
         n_correct = 0
         n_total = 0
         for i in range(len(pdists)):
             # if filelist[int(i)]["seed_id"] in self.test_idxs: # only test items as the query
-            _n_correct, _n_total = self.p_at_k(pdists, i, filelist)
+            _n_correct, _n_total = self.p_at_k(pdists, labels, i, filelist)
             n_correct += _n_correct
             n_total += _n_total
         return n_correct / n_total

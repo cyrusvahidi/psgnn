@@ -113,6 +113,7 @@ class SolIPTSimLitModule(LightningModule):
         subset = self.trainer.test_dataloaders[0].dataset 
         idxs = subset.indices 
         features_id = subset.dataset.features[idxs]
+        labels = subset.dataset.labels[idxs].cpu()
         batch_sz = 64
         features = torch.cat(
             [
@@ -121,8 +122,8 @@ class SolIPTSimLitModule(LightningModule):
             ]
         ) 
         filelist = [self.trainer.test_dataloaders[0].dataset.dataset.filelist[i] for i in idxs]
-        acc = self.test_acc(features, filelist)
-        acc_euclidean = self.test_acc(features_id, filelist)
+        acc = self.test_acc(features.cpu(), labels, filelist)
+        acc_euclidean = self.test_acc(features_id.cpu(), labels, filelist)
 
         self.log("test/acc", acc, prog_bar=True)
         self.log("test/acc_euclidean", acc_euclidean, prog_bar=True)
