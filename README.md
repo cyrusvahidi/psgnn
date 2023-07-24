@@ -1,4 +1,4 @@
-# Graph-Based Auditory Similarity for Musical Playing Techniques
+# GPerceptual Musical Similarity Metric Learning with Graph Neural Networks
 
 ## Installation
 - `git clone`
