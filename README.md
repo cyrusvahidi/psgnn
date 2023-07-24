@@ -1,4 +1,4 @@
-# GPerceptual Musical Similarity Metric Learning with Graph Neural Networks
+# Perceptual Musical Similarity Metric Learning with Graph Neural Networks
 
 ## Installation
 - `git clone`
