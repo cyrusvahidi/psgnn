@@ -3,7 +3,7 @@
 [![Paper]()](https://hal.science/hal-04178191/)
 
 ## Installation
-- `git clone`
+- `git clone https://github.com/cyrusvahidi/ipt-similarity.git`
 - `pip install -e .`
 - `pip install -r requirements.txt`
 
