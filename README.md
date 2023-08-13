@@ -1,5 +1,7 @@
 # Perceptual Musical Similarity Metric Learning with Graph Neural Networks
 
+[![Paper]()]([https://arxiv.org/abs/2204.08269](https://hal.science/hal-04178191/))
+
 ## Installation
 - `git clone`
 - `pip install -e .`
