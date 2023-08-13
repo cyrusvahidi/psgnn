@@ -6,12 +6,10 @@ import torch
 import torch.nn as nn
 from pytorch_lightning import LightningModule
 
-from torchmetrics import MaxMetric, MeanMetric
-
 from ipt_sim.modules.eval import PatK
 
 
-class SolIPTSimLitModule(LightningModule):
+class SolIPTSimGraphLitModule(LightningModule):
     """Example of LightningModule for MNIST classification.
 
     A LightningModule organizes your PyTorch code into 6 sections:
@@ -47,21 +45,17 @@ class SolIPTSimLitModule(LightningModule):
         # metric objects for calculating and averaging accuracy across batches
         self.test_acc = PatK(k=5, pruned=prune_accuracy)
 
-        # # for averaging loss across batches
 
-        # for tracking best so far validation accuracy
+    def forward(self, data, mode="train"):
+        x, edge_index, batch_idx = data.x, data.edge_index, data.batch
+        x = self.model(x, edge_index, batch_idx)
+        x = x.squeeze(dim=-1)
 
-    def forward(self, x: torch.Tensor):
-        return self.net(x)
-
-    def model_step(self, batch: Any):
-        x, y = batch
-        logits = self.forward(x)
-        loss = self.criterion(logits, y - 1)
+        loss = self.criterion(x, data.y - 1)
         return loss
 
     def training_step(self, batch: Any, batch_idx: int):
-        loss = self.model_step(batch)
+        loss = self.forwarsd(batch)
 
         self.log("train/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
         # self.log("train/valid", valid_triplets, on_step=False, on_epoch=True, prog_bar=True)
@@ -70,39 +64,25 @@ class SolIPTSimLitModule(LightningModule):
         # remember to always return loss from `training_step()` or backpropagation will fail!
         return {"loss": loss}
 
-    # def training_epoch_end(self, outputs: List[Any]):
-    #     # `outputs` is a list of dicts returned from `training_step()`
+    def validation_step(self, batch: Any, batch_idx: int):
+        loss = self.forward(batch)
 
-    #     # Warning: when overriding `training_epoch_end()`, lightning accumulates outputs from all batches of the epoch
-    #     # this may not be an issue when training on mnist
-    #     # but on larger datasets/models it's easy to run into out-of-memory errors
+        # update and log metrics
+        self.log("val/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
 
-    #     # consider detaching tensors before returning them from `training_step()`
-    #     # or using `on_train_epoch_end()` instead which doesn't accumulate outputs
-    #     ds = self.trainer.train_dataloader.loaders.dataset
-    #     acc = self.train_acc(ds.features, ds.filelist)
+        # we can return here dict with any tensors
+        # and then read it in some callback or in `training_epoch_end()` below
+        # remember to always return loss from `training_step()` or backpropagation will fail!
+        return {"loss": loss}
 
-    #     self.log("train/acc", acc, prog_bar=True)
+    def validation_epoch_end(self, outputs: List[Any]):
+        batch_losses = [x["loss"] for x in outputs]
+        loss = torch.stack(batch_losses).mean() 
 
-    # def validation_step(self, batch: Any, batch_idx: int):
-    #     loss = self.model_step(batch)
-
-    #     # update and log metrics
-    #     self.log("val/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
-
-    #     # we can return here dict with any tensors
-    #     # and then read it in some callback or in `training_epoch_end()` below
-    #     # remember to always return loss from `training_step()` or backpropagation will fail!
-    #     return {"loss": loss}
-
-    # def validation_epoch_end(self, outputs: List[Any]):
-    #     batch_losses = [x["loss"] for x in outputs]
-    #     loss = torch.stack(batch_losses).mean() 
-
-    #     self.log("val_loss", loss, prog_bar=True)
+        self.log("val_loss", loss, prog_bar=True)
 
     def test_step(self, batch: Any, batch_idx: int):
-        loss = self.model_step(batch)
+        loss = self.forward(batch)
 
         # # update and log metrics
         self.log("test/loss", loss, on_step=False, on_epoch=True, prog_bar=True)
@@ -110,28 +90,18 @@ class SolIPTSimLitModule(LightningModule):
         return {"loss": loss}
 
     def test_epoch_end(self, outputs: List[Any]):
-        subset = self.trainer.test_dataloaders[0].dataset 
-        idxs = subset.indices 
-        features_id = subset.dataset.features[idxs]
-        labels = subset.dataset.labels[idxs].cpu()
+        ds = self.trainer.test_dataloaders[0].dataset 
         batch_sz = 64
         features = torch.cat(
             [
-                self.net(features_id[i : i + batch_sz].to(self.device))
-                for i in range(0, len(features_id), batch_sz)
+                self.net(ds.features[i : i + batch_sz].to(self.device))
+                for i in range(0, len(ds.features), batch_sz)
             ]
         ) 
-        filelist = [self.trainer.test_dataloaders[0].dataset.dataset.filelist[i] for i in idxs]
-        acc = self.test_acc(features.cpu(), labels, filelist)
-        acc_10 = self.test_acc(features.cpu(), labels, filelist, k=10)
-        acc_15 = self.test_acc(features.cpu(), labels, filelist, k=15)
-        acc_20 = self.test_acc(features.cpu(), labels, filelist, k=20)
-        acc_euclidean = self.test_acc(features_id.cpu(), labels, filelist)
+        acc = self.test_acc(features, ds.filelist, test_idxs=ds.test_idxs)
+        acc_euclidean = self.test_acc(ds.features, ds.filelist, test_idxs=ds.test_idxs)
 
-        self.log("test/acc_p@5", acc, prog_bar=True)
-        self.log("test/acc_p@10", acc_10, prog_bar=True)
-        self.log("test/acc_p@15", acc_15, prog_bar=True)
-        self.log("test/acc_p@20", acc_20, prog_bar=True)
+        self.log("test/acc", acc, prog_bar=True)
         self.log("test/acc_euclidean", acc_euclidean, prog_bar=True)
 
     def configure_optimizers(self):
@@ -157,4 +127,4 @@ class SolIPTSimLitModule(LightningModule):
 
 
 if __name__ == "__main__":
-    _ = SolIPTSimLitModule(None, None)
+    _ = SolIPTSimGraphLitModule(None, None)

@@ -141,7 +141,7 @@ class GraphNet(nn.Module):
 
 
 class DynGCN(nn.Module):
-    def __init__(self, channels):
+    def __init__(self, channels, graph_type="ang", k=3, dist="euclidean"):
         super(DynGCN, self).__init__()
         hidden_dim = channels // 2
         self.layers = nn.ModuleList()
@@ -149,32 +149,41 @@ class DynGCN(nn.Module):
         self.layers.append(dglnn.GraphConv(channels, hidden_dim, activation=F.elu))
         # self.layers.append(dglnn.GraphConv(hidden_dim, hidden_dim,activation=F.elu))
         self.dropout = nn.Dropout(0.1)
-        self.relation = RelationNetwork(channels)
+        self.k = k
+        self.graph_type = graph_type
+        self.dist = dist
+        if graph_type == "ang":
+            self.relation = RelationNetwork(channels)
+            # self.sigma = nn.Parameter(torch.tensor([0.2], dtype=torch.float32))
 
     def forward(self, x):
         N, d = x.shape[0], x.shape[1]
         eps = np.finfo(float).eps
-        self.sigma = self.relation(x)
-        emb_x = torch.div(x, (self.sigma + eps))
-        emb1 = torch.unsqueeze(emb_x, 1)
-        emb2 = torch.unsqueeze(emb_x, 0)
-        W = ((emb1 - emb2) ** 2).mean(2)
-        W = torch.exp(-W / 2)
+        if self.graph_type == "ang":
+            # sigma = self.sigma  #
+            sigma = self.relation(x)
+            emb_x = torch.div(x, (sigma + eps))
+            emb1 = torch.unsqueeze(emb_x, 1)
+            emb2 = torch.unsqueeze(emb_x, 0)
+            W = ((emb1 - emb2) ** 2).mean(2)
+            W = torch.exp(-W / 2)
 
-        topk, indices = torch.topk(W, 3)
-        mask = torch.zeros_like(W)
-        mask = mask.scatter(1, indices, 1)
-        mask = ((mask + torch.t(mask)) > 0).type(torch.float32)
-        W = W * mask
-        D = W.sum(0)
-        D_sqrt_inv = torch.sqrt(1.0 / (D + eps))
-        D1 = torch.unsqueeze(D_sqrt_inv, 1).repeat(1, N)
-        D2 = torch.unsqueeze(D_sqrt_inv, 0).repeat(N, 1)
-        S = D1 * W * D2
+            topk, indices = torch.topk(W, self.k)
+            mask = torch.zeros_like(W)
+            mask = mask.scatter(1, indices, 1)
+            mask = ((mask + torch.t(mask)) > 0).type(torch.float32)
+            W = W * mask
+            D = W.sum(0)
+            D_sqrt_inv = torch.sqrt(1.0 / (D + eps))
+            D1 = torch.unsqueeze(D_sqrt_inv, 1).repeat(1, N)
+            D2 = torch.unsqueeze(D_sqrt_inv, 0).repeat(N, 1)
+            S = D1 * W * D2
 
-        src, dst = torch.nonzero(S, as_tuple=True)
+            src, dst = torch.nonzero(S, as_tuple=True)
 
-        g = dgl.graph((src, dst))
+            g = dgl.graph((src, dst))
+        elif self.graph_type == "knn":
+            g = dgl.knn_graph(x, self.k, dist=self.dist)
 
         for i, layer in enumerate(self.layers):
 
@@ -226,16 +235,17 @@ class FFN(nn.Module):
 
 
 class Graph_Block(nn.Module):
-    def __init__(self, in_channels):
+    def __init__(self, in_channels, dist="euclidean", graph_type="ang", skip=True, k=3):
 
         super(Graph_Block, self).__init__()
         self.channels = in_channels
-        self.graph_conv = DynGCN(in_channels)
+        self.graph_conv = DynGCN(in_channels, dist=dist, graph_type=graph_type, k=k)
         self.fc = nn.Sequential(
             nn.Conv2d(in_channels // 2, in_channels, 1, stride=1, padding=0),
             nn.BatchNorm2d(in_channels),
         )
         self.drop_path = DropPath(0.1)
+        self.skip = skip
 
     def forward(self, x):
         _tmp = x
@@ -243,20 +253,41 @@ class Graph_Block(nn.Module):
         out = out.unsqueeze(-1).unsqueeze(-1)
         x = self.fc(out)
         x = x.squeeze(-1).squeeze(-1)
-        x += _tmp
+        if self.skip:
+            x += _tmp
         return x
 
 
 class Graph_Model(nn.Module):
-    def __init__(self, input_size, output_size, hidden_dim=1024):
+    def __init__(
+        self,
+        input_size,
+        output_size,
+        hidden_dim=1024,
+        blocks=2,
+        ffn_block=True,
+        graph_type="ang",
+        dist="euclidean",
+        k=3,
+    ):
         super().__init__()
 
         self.backbone = nn.ModuleList([])
         self.channels = input_size
-        self.blocks = 2
+        self.blocks = blocks
         in_channels = self.channels
+        graph_block = Graph_Block(
+            in_channels, graph_type=graph_type, dist=dist, skip=ffn_block, k=k
+        )
         self.backbone += [
-            Sequential(Graph_Block(in_channels), FFN(in_channels, in_channels // 4))
+            Sequential(
+                graph_block,
+                FFN(in_channels, in_channels // 4),
+            )
+            if ffn_block 
+            else Sequential(
+                graph_block,
+            )
             for i in range(self.blocks)
         ]
         self.backbone = Sequential(*self.backbone)
@@ -279,11 +310,24 @@ class LinearProjection(nn.Module):
 
 
 class MLP(nn.Module):
-    def __init__(self, input_size, output_size, hidden_dim=128):
+    def __init__(self, input_size, output_size, hidden_dim=256):
         super().__init__()
         self.layers = nn.ModuleList()
-        self.layers += [nn.Linear(input_size, hidden_dim), nn.ReLU(), nn.Dropout(0.5)]
-        L = nn.Linear(hidden_dim, output_size, bias=False)
+        # self.layers += [nn.Linear(input_size, hidden_dim), nn.ReLU(), nn.Dropout(0.5)]
+        # L = nn.Linear(hidden_dim, output_size, bias=False)
+        # nn.init.kaiming_uniform_(L.weight, mode="fan_in", nonlinearity="relu")
+        # self.layers.append(L)
+        self.layers += [
+            nn.Linear(input_size, hidden_dim),
+            nn.BatchNorm1d(hidden_dim),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+            nn.Linear(hidden_dim, output_size),
+            nn.BatchNorm1d(output_size),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+        ]
+        L = nn.Linear(output_size, output_size, bias=False)
         nn.init.kaiming_uniform_(L.weight, mode="fan_in", nonlinearity="relu")
         self.layers.append(L)
 

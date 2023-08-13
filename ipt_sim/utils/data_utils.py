@@ -214,7 +214,7 @@ def get_extended_files(
     )
     df = pd.read_csv(SEED_FILELIST, index_col=0)
 
-    seed_imts = {get_sol_IMT(f): i for i, f in enumerate(list(df["fname"]))}
+    seed_imts = {f: i for i, f in enumerate(list(df["IMT"]))}
     ext_files = [
         (seed_imts[get_sol_IMT(os.path.basename(f))], f)
         for f in get_sol_filepaths(SOL_PATH)

@@ -23,5 +23,10 @@ net:
   _target_: ipt_sim.models.components.linear.Graph_Model
   input_size: 512
   output_size: 512
+  blocks: 2
+  ffn_block: true 
+  graph_type: "ang"
+  dist: "euclidean"
+  k: 3
 
 prune_accuracy: True

@@ -65,7 +65,7 @@ def main(cfg: DictConfig) -> Optional[float]:
 
     # train the model
     metrics = train(cfg)
-    for acc in ['test/acc', 'test/acc_euclidean']:
+    for acc in ['test/acc_p@5', 'test/acc_p@10', 'test/acc_p@15', 'test/acc_p@20', 'test/acc_euclidean']:
         accs = torch.stack([m[acc] for m in metrics])
         print(f"{acc}: {float(accs.mean()):.4f} ± {float(accs.std()):.4f}")
 

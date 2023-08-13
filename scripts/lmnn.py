@@ -11,7 +11,7 @@ X = ds.features.numpy()
 Y = ds.labels.numpy()
 
 print("Fitting ...")
-lmnn = LMNN(k=5, learn_rate=1e-5, verbose=True, max_iter=100, convergence_tol=1e-5)
+lmnn = LMNN(k=5, learn_rate=1e-7, verbose=True, max_iter=50, convergence_tol=1e-5)
 lmnn.fit(X, Y)
 
 print("Testing ...")

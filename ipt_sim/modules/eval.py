@@ -199,7 +199,8 @@ class PatK:
         else:
             return 0, 0
 
-    def __call__(self, features, labels, filelist):
+    def __call__(self, features, labels, filelist, k=5):
+        self.k = k
         pdists = torch.cdist(features, features)
         n_correct = 0
         n_total = 0
