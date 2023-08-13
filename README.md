@@ -7,6 +7,8 @@
 - `pip install -e .`
 - `pip install -r requirements.txt`
 
+## Data
+- coming soon ...
 
 ## Usage
 - `python ipt_sim/train.py`
