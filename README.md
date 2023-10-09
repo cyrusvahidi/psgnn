@@ -5,6 +5,7 @@ Modelling auditory similarity judgements between musical instrument playing tech
 
 [![Paper]()](https://hal.science/hal-04178191/)
 </div>
+
 ## Abstract
 Sound retrieval for assisted music composition depends on evaluating similarity between musical instrument sounds, which is partly influenced by playing techniques.
 Previous methods utilizing Euclidean nearest neighbours over acoustic features show some limitations in retrieving sounds sharing equivalent timbral properties, but potentially generated using a different instrument, playing technique, pitch or dynamic. 
