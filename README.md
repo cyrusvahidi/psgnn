@@ -1,9 +1,10 @@
 <div align="center">
+  
 # Perceptual Musical Similarity Metric Learning with Graph Neural Networks
 Modelling auditory similarity judgements between musical instrument playing techniques with graph neural networks
 
 [![Paper]()](https://hal.science/hal-04178191/)
-
+</div>
 ## Abstract
 Sound retrieval for assisted music composition depends on evaluating similarity between musical instrument sounds, which is partly influenced by playing techniques.
 Previous methods utilizing Euclidean nearest neighbours over acoustic features show some limitations in retrieving sounds sharing equivalent timbral properties, but potentially generated using a different instrument, playing technique, pitch or dynamic. 
@@ -38,4 +39,3 @@ Our approach achieves 96.4% retrieval accuracy compared to 38.5% with a Euclidea
     - the `model.prune_accuracy` option determines if the retrieval metric ignores retrievals of the same IMT class as the query
 - `python ipt_sim/train_kfold.py data=kfold model=graph data.feature=openl3`
     - trains with K-folds cross validation
-</div>
