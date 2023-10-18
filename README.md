@@ -14,4 +14,4 @@
 
 K-folds:
 
-- `python ipt_sim/train_kfold.py data=kfold model=graph data.feature=openl3`
+- `python ipt_sim/train_kfold.py data=kfold model=graph model.net.blocks=2 model.net.graph_type=ang model.net.dist=euclidean data.feature=openl3  model.prune_accuracy=True`
