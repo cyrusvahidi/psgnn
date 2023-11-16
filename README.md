@@ -14,16 +14,6 @@ We optimize a Graph Convolutional Network (GCN) over acoustic features via a pro
 Specifically, we construct the graph's adjacency matrix from the acoustic data manifold with an example-wise adaptive k-nearest neighbourhood graph: Adaptive Neighbourhood Graph Neural Network (AN-GNN). 
 Our approach achieves 96.4% retrieval accuracy compared to 38.5% with a Euclidean metric and 86.0\% with a multilayer perceptron (MLP), while effectively considering retrievals from distinct playing techniques to the query example. 
 
-```BibTex
-@inproceedings{vahidi2023perceptual,
-  title={Perceptual musical similarity metric learning with graph neural networks},
-  author={Vahidi, Cyrus and Singh, Shubhr and Benetos, Emmanouil and Phan, Huy and Stowell, Dan and Fazekas, Gy{\"o}rgy and Lagrange, Mathieu},
-  booktitle={2023 IEEE Workshop on Applications of Signal Processing to Audio and Acoustics (WASPAA)},
-  pages={1--5},
-  year={2023},
-  organization={IEEE}
-}
-```
 
 ## Installation
 - `git clone https://github.com/cyrusvahidi/ipt-similarity.git`
@@ -40,3 +30,14 @@ Our approach achieves 96.4% retrieval accuracy compared to 38.5% with a Euclidea
     - the `model.prune_accuracy` option determines if the retrieval metric ignores retrievals of the same IMT class as the query
     - trains with K-folds cross validation
 
+## Cite
+```BibTex
+@inproceedings{vahidi2023perceptual,
+  title={Perceptual musical similarity metric learning with graph neural networks},
+  author={Vahidi, Cyrus and Singh, Shubhr and Benetos, Emmanouil and Phan, Huy and Stowell, Dan and Fazekas, Gy{\"o}rgy and Lagrange, Mathieu},
+  booktitle={2023 IEEE Workshop on Applications of Signal Processing to Audio and Acoustics (WASPAA)},
+  pages={1--5},
+  year={2023},
+  organization={IEEE}
+}
+```
